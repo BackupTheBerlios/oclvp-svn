@@ -21,9 +21,29 @@
  * 02111-1307, USA.
  *)
 
-let main () =
+open Arg;;
+
+let show_version () =
   print_string (Version.oclvp_package ^ " " ^ Version.oclvp_version) ;
   print_newline () ;
+  exit 0;;
+
+let load_file (x: string) =
+    ()
+;;
+
+let options = [
+  ("-V", Unit show_version, "Show the version and exit");
+  ("--version", Unit show_version, "Show the version and exit")
+];;
+
+let usage = "TBD"
+;;
+
+
+
+let main () =
+  parse options load_file usage ;
   exit 0;;
 
 main() ;;

@@ -47,10 +47,10 @@ oclvp.opt: $(oclvp_opt_SOURCES:.ml=.cmx)
 
 .PRECIOUS: *.cmo *.cmi *.cmx
 %.cmo %.cmi: %.ml
-	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) -c $<
+	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) -c $< -o $@
 
 %.cmx %.cmxi: %.ml
-	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) -c $<
+	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) -c $< -o $@
 
 Version.ml: Makefile
 	@rm -f Version.ml
