@@ -1,0 +1,33 @@
+@node Introduction
+@chapter Introduction
+
+@command{oclvp} is a program that reads, writes, and allows the
+manipulation of simple UML models.
+
+Simple UML is an XML vocabulary derived from XMI which was designed to
+overcome the complications and incompatibilities of XMI as an interchange
+format for UML.  It essentially simplifies the meta-model information.
+
+@enumerate 1
+@item
+oclvp implements an abstract syntax (meta model) for simple UML (and some
+part of the UML 2.0 meta-model) and provides functions for manipulating and
+storing these models.
+
+@item
+oclvp checks UML models for some static properties.
+
+@item
+oclvp implements a simple action language.
+
+@item
+oclvp implements a parser and a type checker for OCL 2.0 and some extensions
+to OCL.
+
+@item
+oclvp allows translating models to PVS.
+@end enumerate
+
+
+
+

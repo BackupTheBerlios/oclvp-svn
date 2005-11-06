@@ -1,0 +1,35 @@
+@node Dependencies
+@chapter Compile-Time and Run-Time Dependencies
+
+@menu
+* Compile-Time Dependencies::
+* Run-Time Dependencies::
+@end menu
+
+@node Compile-Time Dependencies
+@section Compile-Time Dependencies
+
+In order to compile the Simple UML Processor, you need to have a working
+C++ compiler.  Also, a useable version of the STL is needed.
+
+The @command{boost} library is used to implement many functions of the
+tool.
+
+For parsing XML files @command{oclvpp} uses @command{libxml}.  Version
+2.6.16 or better is required.
+
+
+
+
+
+@node Run-Time Dependencies
+@section Run-Time Dependencies
+
+@command{oclvpp} may generate graphs in the @command{dot} format.  The user
+may find the @command{graphviz} package useful for formatting these
+graphs.
+
+@command{oclvpp} may generate proof obligations for the PVS theorem prover.
+Currently, we only support PVS 3.0 and better.
+
+

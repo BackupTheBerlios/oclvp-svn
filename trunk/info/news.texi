@@ -1,0 +1,89 @@
+@node News
+@chapter News
+
+@section Version 0.3 Series
+
+The program has been rewritten in C++ and its implementation has been
+considerably simplified.  We hope that this reimplementation makes the
+system more maintainable.  Many more features have been implemented.
+
+The oclvp file format has been rewritten and expanded.
+
+We now support hierarchical state machines and all pseudostate kinds.
+
+A new XMI parser has been implemented.  It does not use XSLT anymore.
+This speeds processing of XMI files a lot.
+
+The new XML parser does not build a DOM tree anymore.  This saves a
+lot of memory, because especially XMI files tend to be huge.
+
+
+
+
+
+
+@section Version 0.1 Series
+
+The version 0.1 series consists of development snapshots towards a
+feature complete release which can be used for testing.
+
+
+
+
+
+@subsection Changes in Version 0.1.6
+
+@itemize @bullet
+@item
+We use the new semantics defined in @file{TACOS.pvs} and @file{TACOSKL.pvs}
+from Mark van der Zwaag.  The translation has been updated to this new
+version.
+
+@item
+In the PVS representation of the kernel language changed the actions
+to lists of actions.  The same was changed in the semantics.
+Groups of actions are now properly translated.
+
+@item
+Initial translation of collection literals has been started.  This
+currently works only for Set.  The implementation includes quantification
+and projection.
+
+@item
+The user's guide has been improved.
+
+@item
+Many errors have been corrected and the memory footprint has been reduced.
+Most memory leaks have been closed.
+@end itemize
+
+This version was released on XXX.
+
+
+
+@subsection Changes in Version 0.1.5
+
+@itemize @bullet
+@item Many errors have been corrected.
+
+@end itemize
+
+This version was released on September 5, 2003.
+
+
+
+@subsection Changes in Version 0.1.4
+
+@itemize @bullet
+@item Many errors have been corrected.
+
+@end itemize
+
+This version was released on August 27, 2003.
+
+
+
+@subsection Changes in Version 0.1.3
+
+This version was the initial release of @command{xmi2pvs}.  It has been
+released on August 19, 2003

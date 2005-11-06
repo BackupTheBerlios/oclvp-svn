@@ -1,0 +1,8 @@
+dnl
+dnl
+AT_INIT([oclvp])
+AT_TESTED(oclvp)
+
+AT_SETUP([unit-tests])
+AT_CHECK([cat </dev/null], [0], [], [])
+AT_CLEANUP

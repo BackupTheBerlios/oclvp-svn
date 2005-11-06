@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+
+suml.dtd
+
+An XML vocabulary for UML models, encoding class diagrams and
+statemachines.
+
+This work was partially funded by IST Project Omega (IST-2001-33522)
+See <http://www-omega.imag.fr/index.php> for details.
+
+Version 0.2.0
+
+Written by
+    Marcel Kyas             <mky@informatik.uni-kiel.de>
+
+Copyright (C) 2005 by Marcel Kyas
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+-->
+
+<!ELEMENT suml (head?,(package|class|association|generalization)*)>
+<!ATTLIST suml
+    version   CDATA #FIXED "0.2"
+    timestamp CDATA #IMPLIED
+>
+
+<!ELEMENT head (meta*)>
+
+<!ELEMENT meta EMPTY>
+<!ATTLIST meta
+    id ID #IMPLIED
+    name CDATA #REQUIRED
+    value CDATA #REQUIRED
+>
+
+<!ELEMENT package ((package|class|association|generalization)*)>
+<!ATTLIST package
+    name CDATA #REQUIRED
+    id ID #IMPLIED
+>
+
+<!ELEMENT class (template*,bind*,extends*,(attribute|operation|reception)*,
+                 constraint*,statemachine?)>
+<!ATTLIST class
+    name CDATA #REQUIRED
+    kind (active|passive) "passive"
+    export (yes|no) "yes"
+>
+
+<!ELEMENT template EMPTY>
+<!ATTLIST template
+    name CDATA #REQUIRED
+>
+
+<!ELEMENT bind EMPTY>
+<!ATTLIST bind 
+    from CDATA #REQUIRED 
+    to CDATA #REQUIRED
+>
+
+<!ELEMENT extends EMPTY>
+<!ATTLIST extends
+    name CDATA #REQUIRED
+>
+
+<!ELEMENT attribute (initializer?)>
+<!ATTLIST attribute
+    name CDATA #REQUIRED 
+    type CDATA #REQUIRED
+    export (yes|no) "yes"
+>
+
+<!ELEMENT initializer (#PCDATA)>
+<!ATTLIST initializer
+    name CDATA #IMPLIED
+    lang CDATA #REQUIRED
+>
+
+<!ELEMENT operation (parameter*,constraint*,implementation?)>
+<!ATTLIST operation
+    name CDATA #REQUIRED
+    type CDATA #REQUIRED
+    id ID #IMPLIED
+    isquery (false|true) "false"
+    export (yes|no) "yes"
+>
+
+<!ELEMENT reception (parameter*,constraint*)>
+<!ATTLIST reception
+    name CDATA #IMPLIED
+    id ID #IMPLIED
+    ref IDREF #IMPLIED
+    export (yes|no) "yes"
+>
+
+<!ELEMENT parameter EMPTY>
+<!ATTLIST parameter
+    name CDATA #REQUIRED 
+    type CDATA #REQUIRED
+>
+
+<!ELEMENT implementation (#PCDATA)>
+<!ATTLIST implementation
+    lang CDATA #REQUIRED
+>
+
+<!ELEMENT generalization EMPTY>
+<!ATTLIST generalization
+    super IDREF #REQUIRED
+    sub IDREF #REQUIRED
+>
+
+<!ELEMENT association (associationend,associationend)>
+<!ATTLIST association
+    name CDATA #IMPLIED
+    export (yes|no) "yes"
+>
+
+<!ELEMENT associationend EMPTY>
+<!ATTLIST associationend
+    name CDATA #IMPLIED
+    class CDATA #REQUIRED
+    aggregation (none|aggregate|composite) "none"
+    isnavigable (true|false) #IMPLIED
+>
+
+<!ELEMENT constraint (#PCDATA)>
+<!ATTLIST constraint
+    stereotype CDATA #REQUIRED
+    name CDATA #IMPLIED
+    lang CDATA #REQUIRED
+>
+
+<!ELEMENT statemachine (region+)>
+<!ATTLIST statemachine
+    name CDATA #IMPLIED
+    id ID #IMPLIED
+>
+
+<!ELEMENT region (state*,transition*)>
+<!ATTLIST region id ID #IMPLIED>
+
+<!ELEMENT state (deferrable*,region*)>
+<!ATTLIST state
+    name CDATA #IMPLIED
+    id ID #REQUIRED
+    kind (normal|initial) "normal"
+>
+
+<!ELEMENT deferrable EMPTY>
+<!ATTLIST deferrable
+    idref IDREF #REQUIRED
+>
+
+<!ELEMENT transition (trigger*,guard?,action?)>
+<!ATTLIST transition
+    name CDATA #IMPLIED
+    source IDREF #REQUIRED
+    target IDREF #REQUIRED
+>
+
+<!ELEMENT trigger EMPTY>
+<!ATTLIST trigger
+    idref IDREF #REQUIRED
+>
+
+<!ELEMENT guard (#PCDATA)>
+<!ATTLIST guard
+    lang CDATA #REQUIRED
+>
+
+<!ELEMENT action (#PCDATA)>
+<!ATTLIST action
+    lang  CDATA #REQUIRED
+>

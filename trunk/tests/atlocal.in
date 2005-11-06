@@ -1,0 +1,7 @@
+# Path to our dtd's for testing.
+#
+XML_CATALOG_FILES=@abs_builddir@/catalog
+export XML_CATALOG_FILES
+
+XMLLINT=@XMLLINT@
+export XMLLINT

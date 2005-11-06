@@ -1,0 +1,23 @@
+Read this if you check oclvp out from the repository.
+
+No generated file is ever allowed to be checked into the repository.
+
+If you check out the project from this repository, you have to install
+all development dependencies and then execute:
+
+$ autoreconf -i -s
+
+This will generate the automake infra-structure and install some missing
+files using symlinks.
+
+Then use ./configure and make as usual.
+
+Development dependencies:
+
+The usual UN*X shell utilities (make, diff, sed, awk, ...)
+ocaml 3.08 or later <http://caml.inria.fr/ocaml/index.en.html>
+ocaml-findlib 1.0 or later <http://www.ocaml-programming.de/packages/>
+ocaml-xmlr 1.0 or later <http://neugierig.org/software/ocaml/xmlr/>
+libxml2 2.6.x (required by ocaml-xmlr) and its tools <http://xmlsoft.org/>
+
+I probably forgot some other dependencies

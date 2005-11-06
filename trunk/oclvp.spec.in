@@ -1,0 +1,52 @@
+Summary:	Object Constraint Language Verification Platform
+Name:		oclvp
+Version:	@VERSION@
+Release:	1
+URL:		http://oclvp.berlios.de/
+Source0:	%{name}-%{version}.tar.gz
+License:	GPL
+Group:		Development/Other
+BuildRoot:	%{_tmppath}/%{name}-root
+
+BuildRequires: autoconf >= 2.59
+BuildRequires: automake >= 1.9
+BuildRequires: ocaml >= 3.08
+BuildRequires: ocaml-findlib >= 1.0.4
+BuildRequires: ocaml-xmlr >= 1.0
+
+%description
+
+%prep
+rm -rf %{buildroot}
+%setup -q
+
+%build
+%configure
+make %{?_smp_mflags}
+
+%check
+make check
+
+%install
+rm -rf %{buildroot}
+%makeinstall
+
+%clean
+rm -rf %{buildroot}
+
+%post
+/usr/sbin/install-info %{_infodir}/%{name}.info %{_infodir}/dir
+
+%preun
+/usr/sbin/install-info --delete %{_infodir}/%{name}.info %{_infodir}/dir
+
+%files
+%defattr(-,root,root)
+%doc AUTHORS ChangeLog COPYING INSTALL NEWS README
+%{_bindir}/oclvp
+%{_bindir}/oclvp.opt
+%{_infodir}/*
+
+%changelog
+* Sat Nov 5 2005 Marcel Kyas <mkyas@users.berlios.de>
+- Initial version of the spec file.
