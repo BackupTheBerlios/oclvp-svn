@@ -23,27 +23,44 @@
 
 open Arg;;
 
+(** Show the name and the version of the program and exit. *)
 let show_version () =
-  print_string (Version.oclvp_package ^ " " ^ Version.oclvp_version) ;
-  print_newline () ;
+  print_string (Version.oclvp_package ^ " " ^ Version.oclvp_version ^ "\n") ;
+  print_string "Copyright (c) 2005 Marcel Kyas\n";
+  print_string "This is free software; see the source for copying conditions.\n";
+  print_string "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n";
+  print_string "PARTICULAR PURPOSE.\n";
   exit 0;;
 
-let load_file (x: string) =
-    ()
-;;
+let ignore x = ()
+
+let from_file name =
+  let len = String.length name in
+  match (String.sub name (len - 4) 4) with
+    ".ocl" -> ignore (OCL.from_file name)
+  | "suml" -> ignore (SUML.from_file name)
+  | ".xmi" -> ignore (XMI.from_file name)
+  | _ -> assert false
+  ;;
 
 let options = [
+  ("-ocl", String (function f -> ignore (OCL.from_file f)),
+   "Read an OCL file");
+  ("-suml", String (function f -> ignore (SUML.from_file f)),
+   "Read a Simplified UML file");
+  ("-xmi", String (function f -> ignore (XMI.from_file f)),
+   "Read an XMI file");
+  ("-v", Unit (function () -> ()), "Print some information while processing");
   ("-V", Unit show_version, "Show the version and exit");
-  ("--version", Unit show_version, "Show the version and exit")
-];;
-
-let usage = "TBD"
+  ("--version", Unit show_version, "Show the version and exit")]
 ;;
+
+let usage = Sys.executable_name ^ " [options]" ;;
 
 
 
 let main () =
-  parse options load_file usage ;
+  parse options from_file usage ;
   exit 0;;
 
 main() ;;

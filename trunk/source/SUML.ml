@@ -1,5 +1,5 @@
 (*
- * XMI.ml -- Read XMI files.
+ * SUML.ml -- Read SUML files.
  *
  * This file is part of oclvp
  *
@@ -23,7 +23,7 @@
 
 open Xmlr;;
 
-let xmi_from_file x =
-  let reader = from_filename x
+let from_file name =
+  let reader = from_filename name
   in ()
   ;;

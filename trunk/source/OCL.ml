@@ -182,3 +182,35 @@ let rec oclinterpreter cd cs ps env expr =
                   (CollectionCall (Collection ("Set", [v]), n, va)))
     | _ -> Error
 ;;
+
+
+
+
+
+let parse_expression stream =
+  Error
+;;
+
+let parse_file stream =
+  parse_expression stream
+;;
+
+(** Parse an expression from a string *)
+let expression_from_string s =
+  parse_expression (Stream.of_string s)
+;;
+
+(** Parse an expression from a file *)
+let expression_from_file name =
+  parse_expression (Stream.of_channel (open_in name))
+;;
+
+(** Parse an OCL file from a string *)
+let from_string s =
+  parse_file (Stream.of_string s)
+;;
+
+(** Parse an OCL file from a file *)
+let from_file name =
+  parse_file (Stream.of_channel (open_in name))
+;;

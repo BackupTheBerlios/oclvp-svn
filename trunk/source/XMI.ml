@@ -23,7 +23,7 @@
 
 open Xmlr;;
 
-let read_document x =
+let from_file x =
   let reader = from_filename x
   in ()
   ;;
