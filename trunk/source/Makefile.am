@@ -24,7 +24,7 @@ CLEANFILES		= *.cmi *.cmo *.cmx *.o
 DISTCLEANFILES		= depends Version.ml
 MAINTAINERCLEANFILES	= Makefile.in
 
-OCAMLCOPTS		= -package xmlr -linkpkg -dllpath-all
+OCAMLCOPTS		= -package xmlr -linkpkg -dllpath-all -g
 OCAMLOPTOPTS		= -package xmlr -linkpkg
 
 bin_PROGRAMS	= oclvp oclvp.opt

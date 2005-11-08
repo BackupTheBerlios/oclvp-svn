@@ -201,11 +201,7 @@ let rec oclinterpreter cd cs ps env expr =
 
     We only store the line, perhaps more will follow?  *)
 
-type 'a lexer_context = {
-  stream: 'a Stream.t;
-  mutable line: int;
-};;
-
+(** Enumerate the tokens used by the parser. *)
 type ocltoken =
     Keyword of string * int
   | Identifier of string * int
@@ -213,6 +209,7 @@ type ocltoken =
   | Float of float * int
   | Str of string * int
   | Bang of int
+  | Quote of int
   | Hash of int
   | Dollar of int
   | Percent of int
@@ -246,19 +243,25 @@ type ocltoken =
   | Bar of int
   | RBrace of int
   | Tilde of int
+;;
 
 exception BadToken
+;;
+
+exception Eof
+;;
 
 (** Create a lexer for OCL.
 
     The lexer will turn a stream of characters (as obtained from a string or
     file) into a stream of tokens. *)
 let lex input =
+  let line = ref 0 in
   let initial_buffer = String.create 256 in
   let buffer = ref initial_buffer in
   let bufpos = ref 0 in
-  let reset_buffer () = buffer := initial_buffer; bufpos := 0
-  and store c =
+  let reset_buffer () = buffer := initial_buffer; bufpos := 0 in
+  let store c =
     if !bufpos >= String.length !buffer then
       begin
 	let newbuffer = String.create (2 * !bufpos)
@@ -267,211 +270,214 @@ let lex input =
 	  buffer := newbuffer
       end;
     String.set !buffer !bufpos c;
-    incr bufpos
-  and get_string () =
-    let s = String.sub !buffer 0 !bufpos in buffer := initial_buffer; s
-  and keyword_table = Hashtbl.create 29
-  in
+    incr bufpos in
+  let get_string () =
+    let s = String.sub !buffer 0 !bufpos in buffer := initial_buffer; s in
+  let keyword_table = Hashtbl.create 29 in
     List.iter (fun s -> Hashtbl.add keyword_table s s)
       [ "and"; "context"; "def"; "derive"; "else"; "endif"; "endpackage";
 	"false"; "if"; "implies"; "init"; "inv"; "in"; "iterate"; "let";
 	"not"; "or"; "package"; "post"; "pre"; "then"; "true"; "Tuple";
 	"xor" ];
-    let identifier_or_keyword id line =
-      try Keyword ((Hashtbl.find keyword_table id), line)
-      with Not_found -> Identifier(id, line)
+    let identifier_or_keyword id =
+      try Some (Keyword ((Hashtbl.find keyword_table id), !line))
+      with Not_found -> Some (Identifier(id, !line))
     in
-    let rec next_token (context : 'a lexer_context) =
-      match Stream.peek context.stream with
+    let rec next_token stream =
+      match Stream.peek stream with
 	  Some (' ' | '\009' | '\026' | '\012') ->
-	    Stream.junk context.stream;
-	    next_token context
+	    Stream.junk stream; next_token stream
 	| Some ( '\013' | '\010' ) ->
-	    Stream.junk context.stream;
-	    context.line <- context.line + 1;
-	    next_token context
+	    Stream.junk stream; incr line; next_token stream 
 	| Some ('A'..'Z' | 'a'..'z' | '_' | '\192'..'\255' as c) ->
-	    Stream.junk context.stream;
-	    reset_buffer();
-	    store c;
-	    parse_identifier_or_keyword
+	    Stream.junk stream; reset_buffer (); store c;
+	    parse_identifier_or_keyword stream
 	| Some ('0'..'9' as c) ->
-	    Stream.junk context.stream;
-	    reset_buffer();
-	    store c;
-	    parse_number context
-	| Some '!' -> Stream.junk context.stream; Bang context.line
-	| Some '"' -> assert false;
-	| Some '#' -> Stream.junk context.stream; Hash context.line
-	| Some '$' -> Stream.junk context.stream; Dollar context.line
-	| Some '%' -> Stream.junk context.stream; Percent context.line
-	| Some '&' -> Stream.junk context.stream; Ampersand context.line
-	| Some '(' -> Stream.junk context.stream; LParen context.line
-	| Some ')' -> Stream.junk context.stream; RParen context.line
-	| Some '*' -> Stream.junk context.stream; Mult context.line
-	| Some '+' -> Stream.junk context.stream; Plus context.line
-	| Some ',' -> Stream.junk context.stream; Comma context.line
-	| Some '\'' ->
-	    Stream.junk context.stream;
-	    reset_buffer();
-	    parse_string context
+	    Stream.junk stream; reset_buffer (); store c; parse_number stream
+	| Some '!' -> Stream.junk stream; Some(Bang !line)
+	| Some '"' -> Stream.junk stream; Some(Quote !line)
+	| Some '#' -> Stream.junk stream; Some(Hash !line)
+	| Some '$' -> Stream.junk stream; Some(Dollar !line)
+	| Some '%' -> Stream.junk stream; Some(Percent !line)
+	| Some '&' -> Stream.junk stream; Some(Ampersand !line)
+	| Some '(' -> Stream.junk stream; Some(LParen !line)
+	| Some ')' -> Stream.junk stream; Some(RParen !line)
+	| Some '*' -> Stream.junk stream; Some(Mult !line)
+	| Some '+' -> Stream.junk stream; Some(Plus !line)
+	| Some ',' -> Stream.junk stream; Some(Comma !line)
+	| Some '\'' -> Stream.junk stream; reset_buffer(); parse_string stream
 	| Some '-' ->
-	    Stream.junk context.stream;
-	    (match Stream.peek context.stream with
-		 Some '-' -> Stream.junk context.stream; parse_comment context
-	       | Some '>' -> Stream.junk context.stream; Arrow context.line
-	       | _ -> Minus context.line)
+	    Stream.junk stream;
+	    begin
+	      match Stream.peek stream with
+		  Some '-' -> Stream.junk stream; parse_comment stream
+		| Some '>' -> Stream.junk stream; Some(Arrow !line)
+		| _ -> Some(Minus !line)
+	    end
 	| Some '.' -> 
-	    Stream.junk context.stream;
-	    (match Stream.peek context.stream with
-		 Some '.' -> Stream.junk context.stream; DotDot context.line
-	       | _ -> Dot context.line)
-	| Some '/' -> Stream.junk context.stream; Div context.line
+	    Stream.junk stream;
+	    begin
+	      match Stream.peek stream with
+		  Some '.' -> Stream.junk stream; Some(DotDot !line)
+	       | _ -> Some(Dot !line)
+	    end
+	| Some '/' -> Stream.junk stream; Some(Div !line)
 	| Some ':' -> 
-	    Stream.junk context.stream;
-	    (match Stream.peek context.stream with
-		 Some ':' ->
-		   Stream.junk context.stream;
-		   DoubleColon context.line
-	       | Some '=' -> Stream.junk context.stream; Assign context.line
-	       | _ -> Colon context.line)
-	| Some ';' -> Stream.junk context.stream; Semicolon context.line
+	    Stream.junk stream;
+	    begin
+	      match Stream.peek stream with
+		  Some ':' -> Stream.junk stream; Some(DoubleColon !line)
+		| Some '=' -> Stream.junk stream; Some(Assign !line)
+		| _ -> Some(Colon !line)
+	    end
+	| Some ';' -> Stream.junk stream; Some(Semicolon !line)
 	| Some '<' ->
-	    Stream.junk context.stream;
-	    (match Stream.peek context.stream with
-		 Some '<' -> Stream.junk context.stream; assert false
-	       | Some '=' -> Stream.junk context.stream; LessEq context.line
-	       | Some '>' -> Stream.junk context.stream; NotEq context.line
-	       | _ -> Less context.line)
+	    Stream.junk stream;
+	    begin
+	      match Stream.peek stream with
+		  Some '<' -> Stream.junk stream; assert false
+		| Some '=' -> Stream.junk stream; Some(LessEq !line)
+		| Some '>' -> Stream.junk stream; Some(NotEq !line)
+		| _ -> Some(Less !line)
+	    end
 	| Some '>' -> 
-	    Stream.junk context.stream;
-	    (match Stream.peek context.stream with
-	       | Some '=' -> Stream.junk context.stream; GreaterEq context.line
-	       | Some '>' -> Stream.junk context.stream; NotEq context.line
-	       | _ -> Greater context.line)
-	| Some '?' -> Question context.line
-	| Some '@' -> At context.line
-	| Some '[' -> LBracket context.line
-	| Some ']' -> RBracket context.line
+	    Stream.junk stream;
+	    begin
+	      match Stream.peek stream with
+		| Some '=' -> Stream.junk stream; Some(GreaterEq !line)
+		| Some '>' -> Stream.junk stream; Some(NotEq !line)
+		| _ -> Some(Greater !line)
+	    end
+	| Some '?' -> Stream.junk stream; Some(Question !line)
+	| Some '@' -> Stream.junk stream; Some(At !line)
+	| Some '[' -> Stream.junk stream; Some(LBracket !line)
+	| Some ']' -> Stream.junk stream; Some(RBracket !line)
 	| Some '^' -> 
-	    Stream.junk context.stream;
-	    (match Stream.peek context.stream with
-		 Some '^' -> Stream.junk context.stream; HatHat context.line
-	       | _ -> Hat context.line)
-	| Some '{' -> Stream.junk context.stream; LBrace context.line
-	| Some '|' -> Stream.junk context.stream; Bar context.line
-	| Some '}' -> Stream.junk context.stream; RBrace context.line
-	| Some '~' -> Stream.junk context.stream; Tilde context.line
-	| _ -> assert false
-    and parse_identifier_or_keyword =
-      Keyword("", 0)
-    and parse_string context =
-      match Stream.peek context.stream with
-	  Some('\'') ->
-	    Stream.junk context.stream;
-	    Str(get_string(), context.line)
+	    Stream.junk stream;
+	    begin
+              match Stream.peek stream with
+		 Some '^' -> Stream.junk stream; Some(HatHat !line)
+	       | _ -> Some(Hat !line)
+            end
+	| Some '{' -> Stream.junk stream; Some(LBrace !line)
+	| Some '|' -> Stream.junk stream; Some(Bar !line)
+	| Some '}' -> Stream.junk stream; Some(RBrace !line)
+	| Some '~' -> Stream.junk stream; Some(Tilde !line)
+	| _ -> raise Eof
+    and parse_identifier_or_keyword stream =
+      match Stream.peek stream with
+	  Some ('0'..'9' | 'A'..'Z' | 'a'..'z' | '_' | '\192'..'\255' as c) ->
+	    Stream.junk stream; store c; parse_identifier_or_keyword stream
+	| _ -> identifier_or_keyword (get_string ())
+    and parse_string stream =
+      match Stream.peek stream with
+	  Some('\'') -> Stream.junk stream; Some(Str(get_string(), !line))
 	| Some '\\' ->
-	    let c = try parse_escape context with
+	    let c = try parse_escape stream with
 		Stream.Failure -> raise (Stream.Error "")
-	    in let s = context.stream in store c; parse_string context
-	| Some c ->
-	    Stream.junk context.stream;
-	    parse_string context
+	    in store c; parse_string stream
+	| Some ('\010' | '\013') -> raise (Stream.Error "")
+	| Some c -> Stream.junk stream; store c; parse_string stream
 	| _ -> raise Stream.Failure
-    and parse_escape context =
-      match Stream.peek context.stream with
-	| Some 'n' -> Stream.junk context.stream; '\n'
-	| Some 'r' -> Stream.junk context.stream; '\t'
-	| Some 't' -> Stream.junk context.stream; '\r'
+    and parse_escape stream =
+      match Stream.peek stream with
+	| Some 'n' -> Stream.junk stream; '\n'
+	| Some 'r' -> Stream.junk stream; '\t'
+	| Some 't' -> Stream.junk stream; '\r'
 	| Some ('0'..'9' as c1) ->
-	    Stream.junk context.stream;
-	    begin match Stream.peek context.stream with
+	    Stream.junk stream;
+	    begin match Stream.peek stream with
 		Some ('0'..'9' as c2) ->
-		  Stream.junk context.stream;
-		  begin match Stream.peek context.stream with
+		  Stream.junk stream;
+		  begin match Stream.peek stream with
 		      Some ('0'..'9' as c3) ->
-			Stream.junk context.stream;
+			Stream.junk stream;
 			Char.chr ((Char.code c1 - 48) * 100 +
 				    (Char.code c2 -48) * 10 + (Char.code c3))
 		    | _ -> raise (Stream.Error "")
 		  end
 	      | _ -> raise (Stream.Error "")
 	    end
-	| Some c -> Stream.junk context.stream; c
+	| Some c -> Stream.junk stream; c
 	| _ -> raise Stream.Failure
-    and parse_number context =
-      match Stream.peek context.stream with
+    and parse_number stream =
+      match Stream.peek stream with
 	  Some ('0'..'9' as c) ->
-	    Stream.junk context.stream;
+	    Stream.junk stream;
 	    store c;
-	    parse_number context
-	| Some '.' ->
-	    Stream.junk context.stream;
-	    store '.';
-	    parse_decimal_part context
+	    parse_number stream
+	| Some '.' -> Stream.junk stream; store '.'; parse_decimal_part stream
 	| Some ('e' | 'E') ->
-	    Stream.junk context.stream;
+	    Stream.junk stream;
 	    store 'e';
-	    parse_exponent_part context
-	| _ -> Int (int_of_string (get_string ()), context.line)
-    and parse_decimal_part context =
-      match Stream.peek context.stream with
+	    parse_exponent_part stream
+	| _ -> Some(Int (int_of_string (get_string ()), !line))
+    and parse_decimal_part stream =
+      match Stream.peek stream with
 	  Some ('0'..'9' as c) ->
-	    Stream.junk context.stream;
+	    Stream.junk stream;
 	    store c;
-	    parse_decimal_part context
+	    parse_decimal_part stream
 	| Some ('e' | 'E') ->
-	    Stream.junk context.stream;
+	    Stream.junk stream;
 	    store 'e';
-	    parse_exponent_part context
-	| _ -> Float (float_of_string (get_string ()), context.line)
-    and parse_exponent_part context =
-      match Stream.peek context.stream with
+	    parse_exponent_part stream
+	| _ -> Some(Float (float_of_string (get_string ()), !line))
+    and parse_exponent_part stream =
+      match Stream.peek stream with
 	  Some ('+' | '-' as c) ->
-	    Stream.junk context.stream;
+	    Stream.junk stream;
 	    store c;
-	    parse_end_exponent_part context
-	| _ -> parse_end_exponent_part context
-    and parse_end_exponent_part context =
-      match Stream.peek context.stream with
+	    parse_end_exponent_part stream
+	| _ -> parse_end_exponent_part stream
+    and parse_end_exponent_part stream =
+      match Stream.peek stream with
 	  Some ('0'..'9' as c) ->
-	    Stream.junk context.stream;
+	    Stream.junk stream;
 	    store c;
-	    parse_end_exponent_part context
-	| _ -> Float (float_of_string (get_string ()), context.line)
-    and parse_comment context =
-      match Stream.peek context.stream with
-	  Some('\010' | '\013') -> next_token context
-	| Some _ -> Stream.junk context.stream; parse_comment context
+	    parse_end_exponent_part stream
+	| _ -> Some(Float (float_of_string (get_string ()), !line))
+    and parse_comment stream =
+      match Stream.peek stream with
+	  Some('\010' | '\013') ->
+	    Stream.junk stream;
+	    incr line;
+	    next_token stream
+	| Some _ -> Stream.junk stream; parse_comment stream
 	| _ -> raise Stream.Failure
-    in next_token { stream = input; line = 1 }
+    in
+      fun () -> next_token input
 ;;
 
-let parse_expression context =
-  ()
+let rec parse_expression lexer =
+  let token = lexer ()
+  in try
+      token::(parse_expression lexer)
+    with
+	Eof -> []
 ;;
 
 
-let parse_file context =
-  parse_expression context
+let parse_file lexer =
+  parse_expression lexer
 ;;
 
 (** Parse an expression from a string *)
 let expression_from_string s =
-  parse_expression { stream = Stream.of_string s; line = 1 }
+  parse_expression (lex (Stream.of_string s))
 ;;
 
 (** Parse an expression from a file *)
 let expression_from_file name =
-  parse_expression { stream = Stream.of_channel (open_in name); line = 1 }
+  parse_expression (lex (Stream.of_channel (open_in name)))
 ;;
 
 (** Parse an OCL file from a string *)
 let from_string s =
-  parse_file { stream = Stream.of_string s; line = 1 }
+  parse_file (lex (Stream.of_string s))
 ;;
 
 (** Parse an OCL file from a file *)
 let from_file name =
-  parse_file { stream = Stream.of_channel (open_in name); line = 1 }
+  parse_file (lex (Stream.of_channel (open_in name)))
 ;;
