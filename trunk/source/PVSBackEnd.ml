@@ -35,7 +35,7 @@ let pvs_mangle_name name =
 
 
 (** Convert an OCL expression to PVS. *)
-let rec ocl_expr_to_pvs expr =
+let rec ocl_expr_to_pvs (expr: oclast) =
   match expr with
       Value Null -> "null"
     | Value Reference r -> "reference(" ^ (string_of_int r) ^ ")"
