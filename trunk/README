@@ -1,0 +1,7 @@
+oclvp - Object Constraint Language Verification Platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+oclvp provides tools which translates a subset of OCL and UML into
+the input language of the PVS theorem prover.
+
+

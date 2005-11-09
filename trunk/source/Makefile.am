@@ -19,46 +19,57 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-MOSTLYCLEANFILES	= *~
-CLEANFILES		= *.cmi *.cmo *.cmx *.o
-DISTCLEANFILES		= depends Version.ml
-MAINTAINERCLEANFILES	= Makefile.in
+MOSTLYCLEANFILES	= *~ *.aux *.log
+CLEANFILES		= *.cmi *.cmo *.cmx *.o *.tex
+DISTCLEANFILES		= oclvp.pdf
+MAINTAINERCLEANFILES	= depend Makefile.in Version.ml
 
-OCAMLCOPTS		= -package xmlr -linkpkg -dllpath-all -g
-OCAMLOPTOPTS		= -package xmlr -linkpkg
+EXTRA_DIST		= depend
 
-bin_PROGRAMS	= oclvp oclvp.opt
+OCAMLCOPTS		= -g -I . -I ${srcdir} -package xmlr -linkpkg \
+			  -dllpath-all
+OCAMLOPTOPTS		= -I . -I ${srcdir} -package xmlr -linkpkg
 
-BUILT_SOURCES		= Version.ml
+bin_PROGRAMS		= oclvp oclvp.opt
 
 oclvp_SOURCES		= Version.ml ClassDiagram.ml ObjectDiagram.ml \
-			  StateMachine.ml OCL.ml SUML.ml XMI.ml PVSBackEnd.ml \
-			  Driver.ml
+			  StateMachine.ml OCL.mli OCL.ml SUML.ml XMI.ml \
+			  PVSBackEnd.ml Driver.ml
 
 oclvp_opt_SOURCES	= $(oclvp_SOURCES)
 
 all-local: oclvp
 
-oclvp: $(oclvp_SOURCES:.ml=.cmo)
-	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) $^ -o $@
+oclvp: $(patsubst %.ml, %.cmo, $(patsubst %.mli, %.cmi, $(oclvp_SOURCES)))
+	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) $(filter %.cmo, $^) -o $@
 
-oclvp.opt: $(oclvp_opt_SOURCES:.ml=.cmx)
-	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) $^ -o $@
+oclvp.opt: $(patsubst %.ml, %.cmx, $(patsubst %.mli, %.cmi, $(oclvp_SOURCES)))
+	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) $(filter %.cmx, $^) -o $@
 
 .PRECIOUS: *.cmo *.cmi *.cmx
-%.cmo %.cmi: %.ml
+.ml.cmo:
 	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) -c $< -o $@
 
-%.cmx %.cmxi: %.ml
+.mli.cmi:
+	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) -c $< -o $@
+
+.ml.cmx:
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) -c $< -o $@
 
-Version.ml: Makefile
+Version.ml: ${top_srcdir}/configure.ac
 	@rm -f Version.ml
 	@echo "let oclvp_version = \"${VERSION}\";;" > Version.ml
 	@echo "let oclvp_package = \"${PACKAGE}\";;" >> Version.ml
 	@echo Wrote $@.
 
-depends: $(oclvp_SOURCES) Makefile
+%.pdf: %.tex
+	pdflatex $<
+	pdflatex $<
+
+oclvp.tex: $(oclvp_SOURCES)
+	$(OCAMLWEB) -o $@ $^
+
+depend: $(oclvp_SOURCES)
 	$(OCAMLFIND) ocamldep $(oclvp_SOURCES) > $@
 
--include depends
+-include ${srcdir}/depend

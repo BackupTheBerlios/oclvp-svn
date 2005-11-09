@@ -21,3 +21,11 @@ ocaml-xmlr 1.0 or later <http://neugierig.org/software/ocaml/xmlr/>
 libxml2 2.6.x (required by ocaml-xmlr) and its tools <http://xmlsoft.org/>
 
 I probably forgot some other dependencies
+
+Rules for commiting to the repository:
+
+1. Please make sure that the stuff you check in compiles correctly.  Try to
+   make sure that make distcheck passes.  If the code does not compile, do
+   not check it in.  If the test suite fails, then notify everybody of this
+   fact.
+

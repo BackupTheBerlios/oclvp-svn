@@ -38,6 +38,24 @@ type
   | Intersection of ocltypespec list (** An intersection type *)
   ;;
 
+let rec prettyprint_typespec t =
+  match t with
+      Name n -> n
+    | Application (n, t) -> n ^ "(" ^ (prettyprint_typespec t) ^ ")"
+    | Variable v -> "$" ^ v
+    | Union l -> (prettyprint_union " ++ " l)
+    | Intersection l -> (prettyprint_union " ** " l)
+    | _ -> assert false
+and prettyprint_union oper l =
+  match l with
+      [] -> assert false
+    | a::[] -> (prettyprint_typespec a)
+    | a::l -> (prettyprint_typespec a) ^ oper ^ (prettyprint_union oper l)
+
+
+
+
+
 (** Define the data type of the abstract syntax of OCL as used in the thesis.
 
     Contrary to the OCL meta model we do not use inheritance here, but
@@ -46,17 +64,72 @@ type
     oclast =
       Value of value
     | Identifier of string
+    | Pathname of string list
     | Collection of string * oclast list
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string
     | OperationCall of oclast * string * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
-    | Let of string * oclast list * oclast
+    | Let of (string * oclast) list * oclast
     | Error
   and
-    oclvardecl = { name: string; typespec: ocltypespec; init: oclast }
+    oclvardecl = { name: string; typespec: ocltypespec; init: oclast option }
   ;;
+
+
+
+
+let rec prettyprint_pathname path =
+  match path with
+      [] -> assert false
+    | n::[] -> n
+    | n::r -> n ^ "::" ^ (prettyprint_pathname r)
+
+
+
+
+(** Print a tree. *)
+let rec prettyprint tree =
+  match tree with
+      Value v -> ""
+    | Identifier i -> i
+    | Pathname path -> (prettyprint_pathname path)
+    | Collection (s, l) -> s ^ "{" ^ (prettyprint_args l) ^ "}"
+    | If (c, t, f) ->
+	"if " ^ (prettyprint c) ^ " then " ^ (prettyprint t) ^ " else " ^
+	  (prettyprint f) ^ " endif"
+    | AttributeCall (s, a) -> (prettyprint s) ^ "." ^ a
+    | OperationCall (s, m, a) ->
+	(prettyprint s) ^ "." ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
+    | CollectionCall (s, m, a) ->
+	(prettyprint s) ^ "->" ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
+    | Iterate (c, n, v, ac, arg) ->
+	(prettyprint c) ^ "->" ^ n
+    | Let (v, i) -> "let " ^ (prettyprint_lets v) ^ " in " ^ (prettyprint i)
+    | Error -> assert false
+and prettyprint_args args =
+  match args with
+      [] -> ""
+    | e::[] -> (prettyprint e)
+    | e::r -> (prettyprint e) ^ ", " ^ (prettyprint_args r)
+and prettyprint_lets l =
+  match l with
+      [] -> assert false
+    | (n,e)::[] -> n ^ " = " ^ (prettyprint e)
+    | (n,e)::r -> n ^ " = " ^ (prettyprint e) ^ ", " ^ (prettyprint_lets r)
+and prettyprint_decls l =
+  match l with 
+      [] -> assert false
+    | d::[] -> (prettyprint_decl d)
+    | d::r -> (prettyprint_decl d) ^ "," ^ (prettyprint_decls r)
+and prettyprint_decl d =
+  d.name ^ ": " ^ (prettyprint_typespec d.typespec) ^
+    (match d.init with Some i -> " = " ^ (prettyprint i) | None -> "")
+
+
+
+
 
 (** The type checker
 
@@ -123,6 +196,10 @@ let rec ocltypechecker cd env (expression: oclast) =
   | Error -> TypeError
   | _ -> assert false
   ;;
+
+
+
+
 
 (** This function defines an interpreter for OCL constraints.
 
@@ -204,7 +281,7 @@ let rec oclinterpreter cd cs ps env expr =
 (** Enumerate the tokens used by the parser. *)
 type ocltoken =
     Keyword of string * int
-  | Identifier of string * int
+  | Id of string * int
   | Int of int * int
   | Float of float * int
   | Str of string * int
@@ -246,7 +323,8 @@ type ocltoken =
 ;;
 
 exception BadToken
-;;
+
+exception ParseError
 
 exception Eof
 ;;
@@ -255,7 +333,7 @@ exception Eof
 
     The lexer will turn a stream of characters (as obtained from a string or
     file) into a stream of tokens. *)
-let lex input =
+let lexer input =
   let line = ref 0 in
   let initial_buffer = String.create 256 in
   let buffer = ref initial_buffer in
@@ -281,7 +359,7 @@ let lex input =
 	"xor" ];
     let identifier_or_keyword id =
       try Some (Keyword ((Hashtbl.find keyword_table id), !line))
-      with Not_found -> Some (Identifier(id, !line))
+      with Not_found -> Some (Id (id, !line))
     in
     let rec next_token stream =
       match Stream.peek stream with
@@ -446,38 +524,187 @@ let lex input =
 	| Some _ -> Stream.junk stream; parse_comment stream
 	| _ -> raise Stream.Failure
     in
-      fun () -> next_token input
-;;
-
-let rec parse_expression lexer =
-  let token = lexer ()
-  in try
-      token::(parse_expression lexer)
-    with
-	Eof -> []
+      Stream.from (fun count -> next_token input)
 ;;
 
 
-let parse_file lexer =
-  parse_expression lexer
+
+
+
+let rec parse_pathname lexer =
+  match Stream.peek lexer with
+      Some Id (name, _) ->
+	Stream.junk lexer;
+	begin
+	  match Stream.peek lexer with
+	      Some DoubleColon _ ->
+		Stream.junk lexer;
+		let n = parse_pathname lexer in
+		  begin
+		    match n with
+			Identifier id -> Pathname (name::[id])
+		      | Pathname path -> Pathname (name::path)
+		      | _ -> assert false
+		  end
+	    | _ -> Identifier name
+	end
+    | _ -> Error
 ;;
+
+
+
+
+
+(** Parse an expression.
+
+    This function is the main entry point to the parser if a constraint
+    is to be parsed from the model. *)
+let rec parse_expression stream : oclast =
+  let token = Stream.peek stream
+  in
+    match token with
+	_ -> assert false
+;;
+
+
+type oclconstraint = string * string option * oclast
+;;
+
+
+
+
+
+let rec parse_constraints input : oclconstraint list =
+  (* We expect something of the form stereotype name?: expression
+     here. *)
+  match Stream.peek input with
+      Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as st), _) ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some Colon _ ->
+		(st, None, parse_expression input)::(parse_constraints input)
+	    | Some Id (name, _) ->
+		Stream.junk input;
+		begin
+		  match Stream.peek input with
+		      Some Colon _ ->
+			(st, Some name, parse_expression input) ::
+			  (parse_constraints input)
+		    | _ -> []
+		end
+	    | _ -> []
+	end
+    | _ -> []
+;;
+
+
+
+
+type oclcontext =
+    string option * string option * oclast * ocltypespec option *
+      (oclconstraint list)
+;;
+
+
+
+
+let parse_context input : oclcontext =
+  (* The keyword context has been eaten by the callee.
+     We expect an Identifier or a path name. *)
+  match Stream.peek input with
+      Some Id (_, _) ->
+	let name = parse_pathname input in
+	  begin
+	    match Stream.peek input with
+		Some Colon _ ->
+		  (None, None, name, None, [])
+	      | Some LParen _ ->
+		  (None, None, name, None, [])
+	      | Some Keyword ("endpackage", _) ->
+		  Stream.junk input; (None, None, name, None, [])
+	      | _ ->
+		  (None, None, name, None, parse_constraints input)
+	  end
+    | _ -> assert false
+;;
+
+
+
+
+
+type oclpackage = oclast option * oclcontext list ;;
+
+(** Parse a package declaration. *)
+
+let parse_package input : oclpackage =
+  (* We expect a package keyword. *)
+  try
+    match Stream.peek input with
+	Some Keyword ("package", _) ->
+	  Stream.junk input;
+	  let name = parse_pathname input in
+	    begin
+	      match Stream.peek input with
+		  Some Id (_, _) -> (Some name, [parse_context input])  
+		| _ -> assert false
+	    end
+      | _ -> (None, [parse_context input])
+  with
+      Eof -> (None, [])
+;;
+
+
+
+
+
+(** Parse a file from input.
+
+    The result is a list of packages, where a package without
+    a name is considered to be the top-level package. *)
+
+let rec parse_file input: oclpackage list =
+  try
+    match Stream.peek input with
+	Some Keyword ("package", _) -> parse_package input :: parse_file input
+      | Some Keyword ("context", _) ->
+	  (None, [parse_context input]) :: parse_file input
+      | _ -> raise ParseError
+  with
+      Eof -> []
+
+
+
+
 
 (** Parse an expression from a string *)
 let expression_from_string s =
-  parse_expression (lex (Stream.of_string s))
+  parse_expression (lexer (Stream.of_string s))
 ;;
+
+
+
+
 
 (** Parse an expression from a file *)
 let expression_from_file name =
-  parse_expression (lex (Stream.of_channel (open_in name)))
+  parse_expression (lexer (Stream.of_channel (open_in name)))
 ;;
+
+
+
+
 
 (** Parse an OCL file from a string *)
 let from_string s =
-  parse_file (lex (Stream.of_string s))
+  parse_file (lexer (Stream.of_string s))
 ;;
+
+
+
+
 
 (** Parse an OCL file from a file *)
 let from_file name =
-  parse_file (lex (Stream.of_channel (open_in name)))
+  parse_file (lexer (Stream.of_channel (open_in name)))
 ;;

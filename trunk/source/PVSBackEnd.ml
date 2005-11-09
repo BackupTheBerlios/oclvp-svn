@@ -76,7 +76,7 @@ let rec action_to_pvs action =
 
 
 (** Write a trainsition to PVS. *)
-(*
+(*i
 let sm_trans_to_pvs t =
   print_string "(#";
   print_string ("source := " ^ (pvs_mangle_name t.src) ^ ",");
@@ -85,4 +85,4 @@ let sm_trans_to_pvs t =
   print_string ("guard := (LAMBDA state: " ^ (ocl_expr_to_pvs t.guard) ^ ",");
   print_string ("action := (LAMBDA state: " ^ (action_to_pvs t.guard) ^ ",");
 ;;
-*)
+i*)
