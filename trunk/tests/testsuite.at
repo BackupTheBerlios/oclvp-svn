@@ -13,5 +13,5 @@ AT_DATA([emptypackage.ocl], [[package test endpackage
 
 AT_CHECK([oclvp empty.ocl], [0], [], [])
 AT_CHECK([oclvp comment.ocl], [0], [], [])
-dnl AT_CHECK([oclvp emptypackage.ocl], [0], [], [])
+AT_CHECK([oclvp emptypackage.ocl], [0], [], [])
 AT_CLEANUP

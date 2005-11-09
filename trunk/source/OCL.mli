@@ -1,5 +1,5 @@
 (*
- * ObjectDiagram.ml -- Definition of the abstract syntax of OCL.
+ * OCL.mli -- Definition of the abstract syntax of OCL.
  *
  * This file is part of oclvp
  *
@@ -58,6 +58,14 @@ type oclpackage = oclast option * oclcontext list
 
 val prettyprint_typespec : ocltypespec -> string
 (** Pretty print a type specification. *)
+
+type ocltoken
+
+val parse_pathname : ocltoken Stream.t -> oclast
+
+val prettyprint_pathname : string list -> string
+
+val lexer : char Stream.t -> ocltoken Stream.t
 
 val from_file : string -> oclpackage list
 

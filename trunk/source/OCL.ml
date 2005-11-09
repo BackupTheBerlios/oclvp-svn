@@ -531,24 +531,32 @@ let lexer input =
 
 
 
+(** Parse a path name from the input stream. *)
+
 let rec parse_pathname lexer =
-  match Stream.peek lexer with
-      Some Id (name, _) ->
-	Stream.junk lexer;
-	begin
-	  match Stream.peek lexer with
-	      Some DoubleColon _ ->
-		Stream.junk lexer;
-		let n = parse_pathname lexer in
-		  begin
-		    match n with
-			Identifier id -> Pathname (name::[id])
-		      | Pathname path -> Pathname (name::path)
-		      | _ -> assert false
-		  end
-	    | _ -> Identifier name
-	end
-    | _ -> Error
+    match Stream.peek lexer with
+	Some Id (name, _) ->
+	  Stream.junk lexer;
+	  begin
+	    try
+	      match Stream.peek lexer with
+		  Some DoubleColon _ ->
+		    Stream.junk lexer;
+		    let n = parse_pathname lexer in
+		      begin
+			try
+			  match n with
+			      Identifier id -> Pathname (name::[id])
+			    | Pathname path -> Pathname (name::path)
+			    | _ -> assert false
+			with
+			    Eof -> Pathname []
+		      end
+		| _ -> Identifier name
+	    with
+		Eof -> Pathname []
+	  end
+      | _ -> Error
 ;;
 
 
@@ -635,13 +643,19 @@ let parse_context input : oclcontext =
 
 type oclpackage = oclast option * oclcontext list ;;
 
+
+
+
+
 (** Parse a package declaration. *)
 
 let parse_package input : oclpackage =
   (* We expect a package keyword. *)
+  print_endline "Here 1.";
   try
     match Stream.peek input with
 	Some Keyword ("package", _) ->
+	  print_endline "Here 2.";
 	  Stream.junk input;
 	  let name = parse_pathname input in
 	    begin
@@ -649,7 +663,7 @@ let parse_package input : oclpackage =
 		  Some Id (_, _) -> (Some name, [parse_context input])  
 		| _ -> assert false
 	    end
-      | _ -> (None, [parse_context input])
+      | _ -> assert false
   with
       Eof -> (None, [])
 ;;
@@ -666,7 +680,8 @@ let parse_package input : oclpackage =
 let rec parse_file input: oclpackage list =
   try
     match Stream.peek input with
-	Some Keyword ("package", _) -> parse_package input :: parse_file input
+	Some Keyword ("package", _) ->
+	  (parse_package input) :: (parse_file input)
       | Some Keyword ("context", _) ->
 	  (None, [parse_context input]) :: parse_file input
       | _ -> raise ParseError
