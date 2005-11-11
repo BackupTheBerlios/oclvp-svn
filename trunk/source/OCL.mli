@@ -67,5 +67,7 @@ val prettyprint_pathname : string list -> string
 
 val lexer : char Stream.t -> ocltoken Stream.t
 
+val from_string : string -> oclpackage list
+
 val from_file : string -> oclpackage list
 

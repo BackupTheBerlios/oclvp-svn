@@ -533,31 +533,26 @@ let lexer input =
 
 (** Parse a path name from the input stream. *)
 
-let rec parse_pathname lexer =
-    match Stream.peek lexer with
+let rec parse_pathname input =
+  Pathname (parse_pathname_identifier input [])
+and parse_pathname_identifier input path =
+  try
+    match Stream.peek input with
 	Some Id (name, _) ->
-	  Stream.junk lexer;
-	  begin
-	    try
-	      match Stream.peek lexer with
-		  Some DoubleColon _ ->
-		    Stream.junk lexer;
-		    let n = parse_pathname lexer in
-		      begin
-			try
-			  match n with
-			      Identifier id -> Pathname (name::[id])
-			    | Pathname path -> Pathname (name::path)
-			    | _ -> assert false
-			with
-			    Eof -> Pathname []
-		      end
-		| _ -> Identifier name
-	    with
-		Eof -> Pathname []
-	  end
-      | _ -> Error
-;;
+	  Stream.junk input;
+	  parse_pathname_double_colon input (path@[name])
+      | _ -> path
+  with
+      Eof -> path
+and parse_pathname_double_colon input path =
+  try
+    match Stream.peek input with
+	Some DoubleColon _ ->
+	  Stream.junk input;
+	  parse_pathname_identifier input path
+      | _ -> path
+  with
+      Eof -> path
 
 
 
@@ -618,23 +613,28 @@ type oclcontext =
 
 
 let parse_context input : oclcontext =
-  (* The keyword context has been eaten by the callee.
-     We expect an Identifier or a path name. *)
   match Stream.peek input with
-      Some Id (_, _) ->
-	let name = parse_pathname input in
-	  begin
-	    match Stream.peek input with
-		Some Colon _ ->
-		  (None, None, name, None, [])
-	      | Some LParen _ ->
-		  (None, None, name, None, [])
-	      | Some Keyword ("endpackage", _) ->
-		  Stream.junk input; (None, None, name, None, [])
-	      | _ ->
-		  (None, None, name, None, parse_constraints input)
-	  end
-    | _ -> assert false
+      Some Keyword ("context", _) ->
+	begin
+	  match Stream.peek input with
+	      Some Id (_, _) ->
+		let name = parse_pathname input in
+		  begin
+		    match Stream.peek input with
+			Some Colon _ ->
+			  (None, None, name, None, [])
+		      | Some LParen _ ->
+			  (None, None, name, None, [])
+		      | Some Keyword ("endpackage", _) ->
+			  Stream.junk input; (None, None, name, None, [])
+		      | _ ->
+			  (None, None, name, None, parse_constraints input)
+		  end
+	    | _ -> assert false
+	end
+    | Some Keyword ("endpackage", _) -> Stream.junk input;
+	(None, None, Error, None, [])
+    | _ -> (None, None, Error, None, [])
 ;;
 
 
@@ -649,24 +649,22 @@ type oclpackage = oclast option * oclcontext list ;;
 
 (** Parse a package declaration. *)
 
-let parse_package input : oclpackage =
+let rec parse_package input =
   (* We expect a package keyword. *)
-  print_endline "Here 1.";
-  try
     match Stream.peek input with
 	Some Keyword ("package", _) ->
-	  print_endline "Here 2.";
-	  Stream.junk input;
-	  let name = parse_pathname input in
-	    begin
-	      match Stream.peek input with
-		  Some Id (_, _) -> (Some name, [parse_context input])  
-		| _ -> assert false
-	    end
+	  Stream.junk input; parse_package_name input
       | _ -> assert false
-  with
-      Eof -> (None, [])
-;;
+and parse_package_name input =
+  let name = (parse_pathname input) in
+    (Some name, (parse_package_context input))
+and parse_package_context input =
+  match Stream.peek input with
+      Some Keyword ("context", _) ->
+	(parse_context input) :: parse_package_context input
+    | Some Keyword ("endpackage", _) -> Stream.junk input; []
+    | _ -> raise ParseError
+
 
 
 
@@ -683,7 +681,7 @@ let rec parse_file input: oclpackage list =
 	Some Keyword ("package", _) ->
 	  (parse_package input) :: (parse_file input)
       | Some Keyword ("context", _) ->
-	  (None, [parse_context input]) :: parse_file input
+	  (None, [parse_context input]) :: (parse_file input)
       | _ -> raise ParseError
   with
       Eof -> []
