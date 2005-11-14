@@ -10,8 +10,22 @@ AT_DATA([comment.ocl], [[-- This is a comment.
 ]])
 AT_DATA([emptypackage.ocl], [[package test endpackage
 ]])
+AT_DATA([emptycontext.ocl], [[context test inv:
+]])
+AT_DATA([twoemptycontext.ocl], [[context test inv: inv:
+]])
+AT_DATA([constraint.ocl], [[context test inv: true
+]])
+AT_DATA([atom.ocl], [[context test inv: (true)
+]])
+AT_DATA([if.ocl], [[context test inv: if true then true else true endif
+]])
 
 AT_CHECK([oclvp empty.ocl], [0], [], [])
 AT_CHECK([oclvp comment.ocl], [0], [], [])
 AT_CHECK([oclvp emptypackage.ocl], [0], [], [])
+AT_CHECK([oclvp emptycontext.ocl], [0], [], [])
+AT_CHECK([oclvp twoemptycontext.ocl], [0], [], [])
+AT_CHECK([oclvp constraint.ocl], [0], [], [])
+AT_CHECK([oclvp if.ocl], [0], [], [])
 AT_CLEANUP

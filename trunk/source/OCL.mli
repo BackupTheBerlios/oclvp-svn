@@ -48,7 +48,18 @@ type
   and
     oclvardecl = { name: string; typespec: ocltypespec; init: oclast option }
 
-type oclconstraint = string * string option * oclast
+
+
+
+
+type oclconstraint =
+    { stereotype : string;
+      name : string option;
+      expression : oclast }
+
+
+
+
 
 type oclcontext =
     string option * string option * oclast * ocltypespec option *

@@ -320,14 +320,11 @@ type ocltoken =
   | Bar of int
   | RBrace of int
   | Tilde of int
-;;
+  | Eof
 
-exception BadToken
 
-exception ParseError
 
-exception Eof
-;;
+
 
 (** Create a lexer for OCL.
 
@@ -441,7 +438,7 @@ let lexer input =
 	| Some '|' -> Stream.junk stream; Some(Bar !line)
 	| Some '}' -> Stream.junk stream; Some(RBrace !line)
 	| Some '~' -> Stream.junk stream; Some(Tilde !line)
-	| _ -> raise Eof
+	| _ -> Some Eof
     and parse_identifier_or_keyword stream =
       match Stream.peek stream with
 	  Some ('0'..'9' | 'A'..'Z' | 'a'..'z' | '_' | '\192'..'\255' as c) ->
@@ -531,28 +528,34 @@ let lexer input =
 
 
 
+(** This exception is raised if a token has been encountered which we
+    do not expect. The first argument to the constructor refers to the
+    bad token, the second to the line in which it has been found, and the
+    third may be used for some explenation. *)
+exception BadToken of string * int * string option
+
+exception ParseError of int
+
+
+
+
+
 (** Parse a path name from the input stream. *)
 
 let rec parse_pathname input =
   Pathname (parse_pathname_identifier input [])
 and parse_pathname_identifier input path =
-  try
-    match Stream.peek input with
-	Some Id (name, _) ->
-	  Stream.junk input;
-	  parse_pathname_double_colon input (path@[name])
-      | _ -> path
-  with
-      Eof -> path
+  match Stream.peek input with
+      Some Id (name, _) ->
+	Stream.junk input;
+	parse_pathname_double_colon input (path@[name])
+    | _ -> path
 and parse_pathname_double_colon input path =
-  try
-    match Stream.peek input with
-	Some DoubleColon _ ->
-	  Stream.junk input;
-	  parse_pathname_identifier input path
-      | _ -> path
-  with
-      Eof -> path
+  match Stream.peek input with
+      Some DoubleColon _ ->
+	Stream.junk input;
+	parse_pathname_identifier input path
+    | _ -> path
 
 
 
@@ -562,44 +565,116 @@ and parse_pathname_double_colon input path =
 
     This function is the main entry point to the parser if a constraint
     is to be parsed from the model. *)
-let rec parse_expression stream : oclast =
-  let token = Stream.peek stream
-  in
-    match token with
-	_ -> assert false
+let rec parse_expression input : oclast =
+  match Stream.peek input with
+      Some Keyword ("if", _) -> parse_if_expression input
+    | Some Keyword ("let", _) -> parse_let_expression input
+    | _ -> parse_atomic_expression input
+and parse_if_expression input =
+  match Stream.peek input with
+      Some Keyword ("if", _) ->
+	Stream.junk input;
+	let c = parse_expression input in
+	  begin
+	    match Stream.peek input with
+		Some Keyword ("then", _) ->
+		  Stream.junk input;
+		  let t = parse_expression input in
+		    begin
+		      match Stream.peek input with
+			  Some Keyword ("else", _) ->
+			    Stream.junk input;
+			    let f = parse_expression input in
+			      begin
+				match Stream.peek input with
+				    Some Keyword ("endif", _) ->
+				      Stream.junk input;
+				      If (c, t, f)
+				  | _ -> raise (ParseError 0)
+			      end
+			| _ -> raise (ParseError 0)
+		    end
+	      | _ -> raise (ParseError 0)
+	  end
+    | _ -> assert false
+and parse_let_expression input =
+  match Stream.peek input with
+      Some Keyword ("let", _) ->
+	Stream.junk input;
+	let l = parse_let_definitions input in
+	  begin
+	    match Stream.peek input with
+		Some Keyword ("in", _) ->
+		  Stream.junk input;
+		  let i = parse_expression input in Let (l, i)
+	      | _ -> raise (ParseError 0)
+	  end
+    | _ -> assert false
+and parse_let_definitions input =
+  []
+and parse_atomic_expression input =
+  match Stream.peek input with
+      Some Keyword ("true", _) -> Stream.junk input; Value (Boolean true)
+    | Some Keyword ("false", _) -> Stream.junk input; Value (Boolean false)
+    | Some Int (v, _) -> Stream.junk input; Value (Integer v)
+    | Some Float (v, _) -> Stream.junk input; Value (Real v)
+    | Some LParen _ ->
+	Stream.junk input;
+	let e = parse_expression input in
+	  begin
+	    match Stream.peek input with
+		Some RParen _ -> Stream.junk input; e
+	      | _ -> raise (ParseError 0)
+	  end
+    | _ -> raise (ParseError 0)
 ;;
 
 
-type oclconstraint = string * string option * oclast
-;;
+(** A constraint. *)
+type oclconstraint =
+    { stereotype : string;
+      name : string option;
+      expression : oclast }
 
 
 
 
+
+
+(** Parse a list of constraints
+
+    Here we expect a list of the form [stereotype name?: expression]. *)
 
 let rec parse_constraints input : oclconstraint list =
-  (* We expect something of the form stereotype name?: expression
-     here. *)
   match Stream.peek input with
-      Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as st), _) ->
+      Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as s), _) ->
 	Stream.junk input;
-	begin
-	  match Stream.peek input with
-	      Some Colon _ ->
-		(st, None, parse_expression input)::(parse_constraints input)
-	    | Some Id (name, _) ->
-		Stream.junk input;
-		begin
-		  match Stream.peek input with
-		      Some Colon _ ->
-			(st, Some name, parse_expression input) ::
-			  (parse_constraints input)
-		    | _ -> []
-		end
-	    | _ -> []
-	end
+	let n = parse_constraint_name input in
+	  begin
+	    match Stream.peek input with
+		Some Eof ->
+		  [{ stereotype = s; name = n;
+		     expression = Value (Boolean true) }]
+	      | Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as s), _) ->
+		  { stereotype = s; name = n;
+		    expression = Value (Boolean true) } ::
+		    parse_constraints input
+	      | _ ->
+		  let e = parse_expression input in
+		    { stereotype = s; name = n; expression = e } ::
+		      parse_constraints input
+	  end
     | _ -> []
-;;
+and parse_constraint_name input =
+  match Stream.peek input with
+      Some Id (n, _) -> Stream.junk input; parse_constraint_colon input; Some n
+    | Some Colon _ -> parse_constraint_colon input; None
+    | _ -> raise (ParseError 0)
+and parse_constraint_colon input =
+  match Stream.peek input with
+      Some Colon _ -> Stream.junk input
+    | _ -> raise (ParseError 0)
+
 
 
 
@@ -615,6 +690,7 @@ type oclcontext =
 let parse_context input : oclcontext =
   match Stream.peek input with
       Some Keyword ("context", _) ->
+        Stream.junk input;
 	begin
 	  match Stream.peek input with
 	      Some Id (_, _) ->
@@ -635,6 +711,18 @@ let parse_context input : oclcontext =
     | Some Keyword ("endpackage", _) -> Stream.junk input;
 	(None, None, Error, None, [])
     | _ -> (None, None, Error, None, [])
+and parse_context_name input =
+    match Stream.peek input with
+        Some Id (_, line) ->
+          let name = parse_pathname input in
+            let constraints = parse_constraints input in
+              (None, None, name, None, constraints)
+      | _ -> raise (ParseError 0)
+and parse_constraints input =
+    match Stream.peek input with
+        Some Keyword ("inv" | "pre" | "post" as stereotype, line) ->
+          []
+      | _ -> raise (ParseError 0)
 ;;
 
 
@@ -663,7 +751,7 @@ and parse_package_context input =
       Some Keyword ("context", _) ->
 	(parse_context input) :: parse_package_context input
     | Some Keyword ("endpackage", _) -> Stream.junk input; []
-    | _ -> raise ParseError
+    | _ -> raise (ParseError 0)
 
 
 
@@ -676,24 +764,22 @@ and parse_package_context input =
     a name is considered to be the top-level package. *)
 
 let rec parse_file input: oclpackage list =
-  try
-    match Stream.peek input with
-	Some Keyword ("package", _) ->
-	  (parse_package input) :: (parse_file input)
-      | Some Keyword ("context", _) ->
-	  (None, [parse_context input]) :: (parse_file input)
-      | _ -> raise ParseError
-  with
-      Eof -> []
+  match Stream.peek input with
+      Some Keyword ("package", _) ->
+        let package = parse_package input in
+	  package :: (parse_file input)
+    | Some Keyword ("context", _) ->
+        let context = parse_context input in
+	  (None, [context]) :: (parse_file input)
+    | Some Eof -> []
+    | _ -> raise (ParseError 0)
 
 
 
 
 
 (** Parse an expression from a string *)
-let expression_from_string s =
-  parse_expression (lexer (Stream.of_string s))
-;;
+let expression_from_string s = parse_expression (lexer (Stream.of_string s))
 
 
 
@@ -702,22 +788,17 @@ let expression_from_string s =
 (** Parse an expression from a file *)
 let expression_from_file name =
   parse_expression (lexer (Stream.of_channel (open_in name)))
-;;
 
 
 
 
 
 (** Parse an OCL file from a string *)
-let from_string s =
-  parse_file (lexer (Stream.of_string s))
-;;
+let from_string s = parse_file (lexer (Stream.of_string s))
 
 
 
 
 
 (** Parse an OCL file from a file *)
-let from_file name =
-  parse_file (lexer (Stream.of_channel (open_in name)))
-;;
+let from_file name = parse_file (lexer (Stream.of_channel (open_in name)))
