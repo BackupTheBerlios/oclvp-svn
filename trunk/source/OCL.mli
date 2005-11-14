@@ -38,6 +38,7 @@ type
     | Identifier of string
     | Pathname of string list
     | Collection of string * oclast list
+    | Range of oclast * oclast
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string
     | OperationCall of oclast * string * oclast list

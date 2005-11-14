@@ -1,5 +1,5 @@
 (*
- * ObjectDiagram.ml -- Definition of the abstract syntax of OCL.
+ * OCL.ml -- Definition of the abstract syntax of OCL.
  *
  * This file is part of oclvp
  *
@@ -66,6 +66,7 @@ type
     | Identifier of string
     | Pathname of string list
     | Collection of string * oclast list
+    | Range of oclast * oclast
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string
     | OperationCall of oclast * string * oclast list
@@ -322,7 +323,94 @@ type ocltoken =
   | Tilde of int
   | Eof
 
+let get_token_line token =
+  match token with
+  | Eof -> assert false
+  | Keyword (_, line) -> line
+  | Id (_, line) -> line
+  | Int (_, line) -> line
+  | Float (_, line) -> line
+  | Str (_, line) -> line
+  | Bang line -> line
+  | Quote line -> line
+  | Hash line -> line
+  | Dollar line -> line
+  | Percent line -> line
+  | Ampersand line -> line
+  | LParen line -> line
+  | RParen line -> line
+  | Mult line -> line
+  | Plus line -> line
+  | Comma line -> line
+  | Minus line -> line
+  | Arrow line -> line
+  | Dot line -> line
+  | DotDot line -> line
+  | Div line -> line
+  | Colon line -> line
+  | DoubleColon line -> line
+  | Assign line -> line
+  | Semicolon line -> line
+  | Less line -> line
+  | LessEq line -> line
+  | NotEq line -> line
+  | Greater line -> line
+  | GreaterEq line -> line
+  | Question line -> line
+  | At line -> line
+  | LBracket line -> line
+  | RBracket line -> line
+  | Hat line -> line
+  | HatHat line -> line
+  | LBrace line -> line
+  | Bar line -> line
+  | RBrace line -> line
+  | Tilde line -> line
 
+let get_token_name token =
+  match token with
+  | Eof -> "<<EOF>>"
+  | Keyword (name, _) -> "<<keyword: " ^ name ^ ">>"
+  | Id (name, _) -> "<<identifier: " ^ name ^ ">>"
+  | Int (i, _) -> "<<integer: " ^ (string_of_int i) ^ ">>"
+  | Float (f, _) -> "<<real: " ^ (string_of_float f) ^ ">>"
+  | Str (s, _) -> "<<string: '" ^ s ^ "'>>"
+  | Bang _ -> "!"
+  | Quote _ -> "\""
+  | Hash _ -> "#"
+  | Dollar _ -> "$"
+  | Percent _ -> "%"
+  | Ampersand _ -> "&"
+  | LParen _ -> "("
+  | RParen _ -> ")"
+  | Mult _ -> "*"
+  | Plus _ -> "+"
+  | Comma _ -> ","
+  | Minus _ -> "-"
+  | Arrow _ -> "->"
+  | Dot _ -> "."
+  | DotDot _ -> ".."
+  | Div _ -> "/"
+  | Colon _ -> ":"
+  | DoubleColon _ -> "::"
+  | Assign _ -> ":="
+  | Semicolon _ -> ";"
+  | Less _ -> "<"
+  | LessEq _ -> "<="
+  | NotEq _ -> "<>"
+  | Greater _ -> ">"
+  | GreaterEq _ -> ">="
+  | Question _ -> "?"
+  | At _ -> "@"
+  | LBracket _ -> "["
+  | RBracket _ -> "]"
+  | Hat _ -> "^"
+  | HatHat _ -> "^^"
+  | LBrace _ -> "{"
+  | Bar _ -> "|"
+  | RBrace _ -> "}"
+  | Tilde _ -> "~"
+  
 
 
 
@@ -394,7 +482,7 @@ let lexer input =
 	    begin
 	      match Stream.peek stream with
 		  Some '.' -> Stream.junk stream; Some(DotDot !line)
-	       | _ -> Some(Dot !line)
+	        | _ -> Some(Dot !line)
 	    end
 	| Some '/' -> Stream.junk stream; Some(Div !line)
 	| Some ':' -> 
@@ -476,13 +564,16 @@ let lexer input =
 	| Some c -> Stream.junk stream; c
 	| _ -> raise Stream.Failure
     and parse_number stream =
-      match Stream.peek stream with
-	  Some ('0'..'9' as c) ->
+      match Stream.npeek 2 stream with
+	  ('0'..'9' as c)::_ ->
 	    Stream.junk stream;
 	    store c;
 	    parse_number stream
-	| Some '.' -> Stream.junk stream; store '.'; parse_decimal_part stream
-	| Some ('e' | 'E') ->
+	| ['.'; '.'] ->
+            Some(Int (int_of_string (get_string ()), !line))
+	| '.'::_ ->
+            Stream.junk stream; store '.'; parse_decimal_part stream
+	| ('e' | 'E')::_ ->
 	    Stream.junk stream;
 	    store 'e';
 	    parse_exponent_part stream
@@ -565,11 +656,85 @@ and parse_pathname_double_colon input path =
 
     This function is the main entry point to the parser if a constraint
     is to be parsed from the model. *)
-let rec parse_expression input : oclast =
+let rec parse_expression input =
   match Stream.peek input with
-      Some Keyword ("if", _) -> parse_if_expression input
-    | Some Keyword ("let", _) -> parse_let_expression input
-    | _ -> parse_atomic_expression input
+      Some Keyword ("let", _) -> parse_let_expression input
+    | _ -> parse_postfix_expression input
+and parse_let_expression input =
+  match Stream.peek input with
+      Some Keyword ("let", _) ->
+	Stream.junk input;
+	let l = parse_let_definitions input in
+	  begin
+	    match Stream.peek input with
+		Some Keyword ("in", _) ->
+		  Stream.junk input;
+		  let i = parse_expression input in Let (l, i)
+	      | Some Eof -> assert false
+	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+	      | None -> assert false
+	  end
+    | _ -> assert false
+and parse_let_definitions input =
+  []
+and parse_postfix_expression input =
+  let expr = parse_atomic_expression input in
+  match Stream.peek input with
+      Some DotDot _ -> Stream.junk input; Range(expr, parse_expression input)
+    | _ -> expr
+and parse_atomic_expression input =
+  match Stream.peek input with
+      Some Keyword ("true", _) -> Stream.junk input; Value (Boolean true)
+    | Some Keyword ("false", _) -> Stream.junk input; Value (Boolean false)
+    | Some Int (v, _) -> Stream.junk input; Value (Integer v)
+    | Some Float (v, _) -> Stream.junk input; Value (Real v)
+    | Some Str (v, _) -> Stream.junk input; Value (String v)
+    | Some Id (_,_) ->
+        let name = parse_pathname input in
+	  begin
+            match name with
+		Pathname [n] ->
+		  begin
+		    match Stream.peek input with
+			Some LBrace _ ->
+			  Collection (n, parse_collection_literal_parts input)
+		      | _ -> name
+		  end
+	      | _ -> name
+	  end
+    | Some LParen _ ->
+	Stream.junk input;
+	let e = parse_expression input in
+	  begin
+	    match Stream.peek input with
+		Some RParen _ -> Stream.junk input; e
+	      | Some Eof -> assert false
+	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+	      | None -> assert false
+	  end
+    | Some Keyword ("if", _) -> parse_if_expression input
+    | Some Eof -> assert false
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+    | None -> assert false
+and parse_collection_literal_parts input =
+  match Stream.peek input with
+      Some LBrace _ ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some RBrace _ -> Stream.junk input; []
+	    | Some _ -> 
+		let l = parse_expression_list input in
+		  begin
+		    match Stream.peek input with
+			Some RBrace _ -> Stream.junk input; l
+		      | Some Eof -> assert false
+		      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+		      | None -> assert false
+		  end
+	    | None -> assert false
+	end
+    | _ -> assert false
 and parse_if_expression input =
   match Stream.peek input with
       Some Keyword ("if", _) ->
@@ -590,43 +755,26 @@ and parse_if_expression input =
 				    Some Keyword ("endif", _) ->
 				      Stream.junk input;
 				      If (c, t, f)
-				  | _ -> raise (ParseError 0)
+				  | Some Eof -> assert false
+				  | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+				  | None -> assert false
 			      end
-			| _ -> raise (ParseError 0)
+			| Some Eof -> assert false
+			| Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+			| None -> assert false
 		    end
-	      | _ -> raise (ParseError 0)
+	      | Some Eof -> assert false
+	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+	      | None -> assert false
 	  end
     | _ -> assert false
-and parse_let_expression input =
-  match Stream.peek input with
-      Some Keyword ("let", _) ->
-	Stream.junk input;
-	let l = parse_let_definitions input in
-	  begin
-	    match Stream.peek input with
-		Some Keyword ("in", _) ->
-		  Stream.junk input;
-		  let i = parse_expression input in Let (l, i)
-	      | _ -> raise (ParseError 0)
-	  end
-    | _ -> assert false
-and parse_let_definitions input =
-  []
-and parse_atomic_expression input =
-  match Stream.peek input with
-      Some Keyword ("true", _) -> Stream.junk input; Value (Boolean true)
-    | Some Keyword ("false", _) -> Stream.junk input; Value (Boolean false)
-    | Some Int (v, _) -> Stream.junk input; Value (Integer v)
-    | Some Float (v, _) -> Stream.junk input; Value (Real v)
-    | Some LParen _ ->
-	Stream.junk input;
-	let e = parse_expression input in
-	  begin
-	    match Stream.peek input with
-		Some RParen _ -> Stream.junk input; e
-	      | _ -> raise (ParseError 0)
-	  end
-    | _ -> raise (ParseError 0)
+and parse_expression_list input =
+  let expr = (parse_expression input) in
+    match Stream.peek input with
+	Some Comma _ ->
+          Stream.junk input;
+          expr:: (parse_expression_list input)
+      | _ -> [expr]
 ;;
 
 
@@ -669,11 +817,15 @@ and parse_constraint_name input =
   match Stream.peek input with
       Some Id (n, _) -> Stream.junk input; parse_constraint_colon input; Some n
     | Some Colon _ -> parse_constraint_colon input; None
-    | _ -> raise (ParseError 0)
+    | Some Eof -> assert false
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+    | None -> assert false
 and parse_constraint_colon input =
   match Stream.peek input with
       Some Colon _ -> Stream.junk input
-    | _ -> raise (ParseError 0)
+    | Some Eof -> assert false
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+    | None -> assert false
 
 
 
@@ -717,12 +869,17 @@ and parse_context_name input =
           let name = parse_pathname input in
             let constraints = parse_constraints input in
               (None, None, name, None, constraints)
-      | _ -> raise (ParseError 0)
+      | Some Eof -> assert false
+      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+      | None -> assert false
 and parse_constraints input =
     match Stream.peek input with
-        Some Keyword ("inv" | "pre" | "post" as stereotype, line) ->
+        Some Keyword ("inv" | "pre" | "post" | "init" | "deriv" as stereotype,
+		      line) ->
           []
-      | _ -> raise (ParseError 0)
+      | Some Eof -> assert false
+      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+      | None -> assert false
 ;;
 
 
@@ -751,7 +908,9 @@ and parse_package_context input =
       Some Keyword ("context", _) ->
 	(parse_context input) :: parse_package_context input
     | Some Keyword ("endpackage", _) -> Stream.junk input; []
-    | _ -> raise (ParseError 0)
+    | Some Eof -> assert false
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+    | None -> assert false
 
 
 
@@ -772,7 +931,8 @@ let rec parse_file input: oclpackage list =
         let context = parse_context input in
 	  (None, [context]) :: (parse_file input)
     | Some Eof -> []
-    | _ -> raise (ParseError 0)
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), None))
+    | None -> assert false
 
 
 
