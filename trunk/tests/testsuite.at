@@ -20,7 +20,6 @@ AT_DATA([atom.ocl], [[context test inv: (true)
 ]])
 AT_DATA([if.ocl], [[context test inv: if true then true else true endif
 ]])
-
 AT_DATA([literal.ocl], [[context test
 inv: true
 inv: 1
@@ -30,6 +29,18 @@ inv: Set{}
 inv: Set{1,2,3}
 inv: Set{1..3}
 ]])
+AT_DATA([unary.ocl], [[context test
+inv: not true
+inv: not not true
+inv: - 1
+inv: - - 1
+]])
+AT_DATA([binary.ocl], [[context test
+inv: 1 + 1 and 2
+inv: - 1 and 2
+inv: a = b
+]])
+
 
 AT_CHECK([oclvp empty.ocl], [0], [], [])
 AT_CHECK([oclvp comment.ocl], [0], [], [])
@@ -39,4 +50,6 @@ AT_CHECK([oclvp twoemptycontext.ocl], [0], [], [])
 AT_CHECK([oclvp constraint.ocl], [0], [], [])
 AT_CHECK([oclvp if.ocl], [0], [], [])
 AT_CHECK([oclvp literal.ocl], [0], [], [])
+AT_CHECK([oclvp unary.ocl], [0], [], [])
+AT_CHECK([oclvp binary.ocl], [0], [], [])
 AT_CLEANUP

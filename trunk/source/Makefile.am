@@ -62,6 +62,16 @@ Version.ml: ${top_srcdir}/configure.ac
 	@echo "let oclvp_package = \"${PACKAGE}\";;" >> Version.ml
 	@echo Wrote $@.
 
+depend: $(oclvp_SOURCES)
+	$(OCAMLFIND) ocamldep $(oclvp_SOURCES) > $@
+
+.PHONY: ocamldoc
+ocamldoc: oclvp.dump oclvp.pdf
+
+oclvp.dump: $(oclvp_SOURCES)
+	test -d html || mkdir html
+	$(OCAMLDOC) -html -d html -dump $@ -hide Xmlr -all-params $^
+
 %.pdf: %.tex
 	pdflatex $<
 	pdflatex $<
@@ -69,7 +79,8 @@ Version.ml: ${top_srcdir}/configure.ac
 oclvp.tex: $(oclvp_SOURCES)
 	$(OCAMLWEB) -o $@ $^
 
-depend: $(oclvp_SOURCES)
-	$(OCAMLFIND) ocamldep $(oclvp_SOURCES) > $@
+distclean-local:
+	test ! -d html || rm -rf html
+	rm -f oclvp.dump
 
 -include ${srcdir}/depend
