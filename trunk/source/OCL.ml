@@ -824,10 +824,10 @@ and parse_unary_expression input =
     | Some Minus _ ->
 	Stream.junk input;
 	OperationCall (parse_unary_expression input, "-", []);
-    | _ -> parse_postfix_expression input
-and parse_postfix_expression input =
-  let expr = parse_atomic_expression input in
-    match Stream.peek input with
+    | _ -> let expr = parse_atomic_expression input in parse_postfix_expression expr input
+and parse_postfix_expression expr input =
+  (* Parse a postfix of an expression. *)
+  match Stream.peek input with
 	Some Dot _ ->
 	  Stream.junk input;
 	  begin
@@ -842,10 +842,12 @@ and parse_postfix_expression input =
 		  assert false
 	      | Id (name, _)::At _::Keyword ("pre", _)::_ ->
 		  (* AttributeCallCS [A] *)
-		  AttributeCall (expr, name, true)
+		  Stream.junk input; Stream.junk input; Stream.junk input;
+		  parse_postfix_expression (AttributeCall (expr, name, true)) input
 	      | Id (name, _)::_ ->
 		  (* AttributeCallCS [A] *)
-		  AttributeCall (expr, name, false)
+		  Stream.junk input;
+		  parse_postfix_expression (AttributeCall (expr, name, false)) input
 	      | Eof::_ | [] -> assert false
 	      | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t), ")"))
 	    end

@@ -8,48 +8,56 @@ AT_DATA([empty.ocl], [[
 ]])
 AT_DATA([comment.ocl], [[-- This is a comment.
 ]])
-AT_DATA([emptypackage.ocl], [[package test endpackage
-]])
 AT_DATA([emptycontext.ocl], [[context test inv:
 ]])
-AT_DATA([twoemptycontext.ocl], [[context test inv: inv:
-]])
-AT_DATA([constraint.ocl], [[context test inv: true
-]])
-AT_DATA([atom.ocl], [[context test inv: (true)
-]])
-AT_DATA([if.ocl], [[context test inv: if true then true else true endif
-]])
-AT_DATA([literal.ocl], [[context test
-inv: true
-inv: 1
-inv: 1.0
-inv: 'string'
-inv: Set{}
-inv: Set{1,2,3}
-inv: Set{1..3}
-]])
-AT_DATA([unary.ocl], [[context test
-inv: not true
-inv: not not true
-inv: - 1
-inv: - - 1
-]])
-AT_DATA([binary.ocl], [[context test
-inv: 1 + 1 and 2
-inv: - 1 and 2
-inv: a = b
-]])
-
 
 AT_CHECK([oclvp empty.ocl], [0], [], [])
+AT_CHECK([oclvp -oclexp ''], [0], [], [])
 AT_CHECK([oclvp comment.ocl], [0], [], [])
-AT_CHECK([oclvp emptypackage.ocl], [0], [], [])
-AT_CHECK([oclvp emptycontext.ocl], [0], [], [])
-AT_CHECK([oclvp twoemptycontext.ocl], [0], [], [])
-AT_CHECK([oclvp constraint.ocl], [0], [], [])
+AT_CHECK([oclvp -oclexp 'package test endpackage'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv:'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: inv:'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: true'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: (true)'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-if-parser])
+AT_DATA([if.ocl], [[context test inv: if true then true else true endif
+]])
 AT_CHECK([oclvp if.ocl], [0], [], [])
-AT_CHECK([oclvp literal.ocl], [0], [], [])
-AT_CHECK([oclvp unary.ocl], [0], [], [])
-AT_CHECK([oclvp binary.ocl], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-literal-parser])
+AT_CHECK([oclvp -oclexp 'context test inv: true'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: 1'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: 1.0'], [0], [], [])
+dnl AT_CHECK([oclvp -oclexp 'context test inv: \'string\''], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: Set{}'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: Set{1,2,3}'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: Set{1..3}'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: Set{0,1..3}'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: Set{1..3,4}'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-unary-parser])
+AT_CHECK([oclvp -oclexp 'context test inv: not true'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: not not true'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: -1'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: - -1'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-binary-parser])
+AT_CHECK([oclvp -oclexp 'context test inv: 1 + 1 and 2'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: - 1 and 2'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: 1 = 2'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-attribute-parser])
+AT_CHECK([oclvp -oclexp 'context test inv: a'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: a@pre'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: a.a'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: a@pre.a'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: a.a@pre'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: a@pre.a@pre'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: a.a.a@pre'], [0], [], [])
 AT_CLEANUP

@@ -45,14 +45,18 @@ let from_file name =
 
 let options = [
   ("-ocl", String (function f -> ignore (OCL.from_file f)),
-   "Read an OCL file");
+   "file  Read an OCL file");
+  ("-oclexp", String (function s -> ignore (OCL.from_string s)),
+   "string  Parse string as the contents of an OCL file.");
   ("-suml", String (function f -> ignore (SUML.from_file f)),
-   "Read a Simplified UML file");
+   "file  Read a Simplified UML file");
   ("-xmi", String (function f -> ignore (XMI.from_file f)),
-   "Read an XMI file");
-  ("-v", Unit (function () -> ()), "Print some information while processing");
-  ("-V", Unit show_version, "Show the version and exit");
-  ("--version", Unit show_version, "Show the version and exit")]
+   "file  Read an XMI file");
+  ("-v", Unit (function () -> ()),
+   "  Print some information while processing");
+  ("-V", Unit show_version,
+   "  Show the version and exit");
+  ("--version", Unit show_version, "  Show the version and exit")]
 ;;
 
 let usage = Sys.executable_name ^ " [options]" ;;
