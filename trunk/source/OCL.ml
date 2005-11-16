@@ -56,10 +56,11 @@ and prettyprint_union oper l =
 
 
 
-(** Define the data type of the abstract syntax of OCL as used in the thesis.
+(** Define the data type of the abstract syntax of OCL as used in my
+    thesis.
 
-    Contrary to the OCL meta model we do not use inheritance here, but
-    a purely functional style. *)
+    This abstract syntax is not derived from ptc/05-06-06.  It follows
+    more standard ideas. *)
 type
     oclast =
       Value of value
@@ -68,11 +69,12 @@ type
     | Collection of string * oclast list
     | Range of oclast * oclast
     | If of oclast * oclast * oclast
-    | AttributeCall of oclast * string
+    | AttributeCall of oclast * string * bool
     | OperationCall of oclast * string * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
     | Let of (string * oclast) list * oclast
+    | Self
     | Error
   and
     oclvardecl = { name: string; typespec: ocltypespec; init: oclast option }
@@ -101,7 +103,7 @@ let rec prettyprint tree =
     | If (c, t, f) ->
 	"if " ^ (prettyprint c) ^ " then " ^ (prettyprint t) ^ " else " ^
 	  (prettyprint f) ^ " endif"
-    | AttributeCall (s, a) -> (prettyprint s) ^ "." ^ a
+    | AttributeCall (s, a, p) -> (prettyprint s) ^ "." ^ a ^ (if p then "@pre" else "")
     | OperationCall (s, m, a) ->
 	(prettyprint s) ^ "." ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
     | CollectionCall (s, m, a) ->
@@ -109,6 +111,7 @@ let rec prettyprint tree =
     | Iterate (c, n, v, ac, arg) ->
 	(prettyprint c) ^ "->" ^ n
     | Let (v, i) -> "let " ^ (prettyprint_lets v) ^ " in " ^ (prettyprint i)
+    | Self -> "self"
     | Error -> assert false
 and prettyprint_args args =
   match args with
@@ -167,7 +170,7 @@ let rec ocltypechecker cd env (expression: oclast) =
                  ocltypechecker cd env e;
                  ocltypechecker cd env f]
            | _ -> TypeError)
-  | AttributeCall (c, n) ->
+  | AttributeCall (c, n, _) ->
       let ct = ocltypechecker cd env c
       in
       TypeError (* fetch () n *)
@@ -236,7 +239,7 @@ let rec oclinterpreter cd cs ps env expr =
              Value Boolean true -> oclinterpreter cd cs ps env e
            | Value Boolean false -> oclinterpreter cd cs ps env f
            | _ -> Error)
-    | AttributeCall (c, n) ->
+    | AttributeCall (c, n, _) ->
 	( match oclinterpreter cd cs ps env c with
               Value Reference r ->
 		Value (Hashtbl.find (List.nth cs.objects r).attributes n)
@@ -677,10 +680,21 @@ and parse_pathname_double_colon input path =
 
 
 
-(** Parse an expression.
+(** Parse an OCL expression.
 
     This function is the main entry point to the parser if a constraint
-    is to be parsed from the model. *)
+    is to be parsed from the model.
+
+    The grammar parsed by this language is described in OMG:
+    ptc/05-05-06.pdf, Chapter 9.  It does not implement the
+    disambiguating rules.  I feel that it is more appropriate to leave
+    this task to the type checker.  Meanwhile it is not obvious
+    anymore what a valid expression is supposed to be, consequently,
+    we try to use a good approximation and await bug reports which we
+    the can try to evaluate.
+
+    To do: Implement the _ convention described in section 9.3, probably in
+    the type checker. *)
 let rec parse_expression input =
   match Stream.peek input with
       Some Keyword ("let", _) -> parse_let_expression input
@@ -704,6 +718,10 @@ and parse_let_definitions input =
   []
 and parse_binary_expression input =
   (** Parse a binary expression, that is, a xor/iff expression.
+
+      The following functions are concerned with OperationCallCS [A],
+      but our implementation restricts to a sensible subset of expressions
+      and respects the usual precedence rules.
 
       @parameter input The input stream.
 
@@ -797,6 +815,8 @@ and parse_mult_expression input =
 	    OperationCall (lhs, "mod", [rhs])
       | _ -> lhs (* Not a binary operator, so end of the binary expression. *)
 and parse_unary_expression input =
+  (* Handle OperationCallCS [H]; for now we only allow - and not here instead
+     of simple names. *)
   match Stream.peek input with
       Some Keyword ("not" as oper, _) ->
 	Stream.junk input;
@@ -809,35 +829,75 @@ and parse_postfix_expression input =
   let expr = parse_atomic_expression input in
     match Stream.peek input with
 	Some Dot _ ->
-	  Stream.junk input; Error 
+	  Stream.junk input;
+	  begin
+	    match Stream.npeek 4 input with
+		Id (name, _)::LParen _::_ -> (* OperationCallCS [C] *)
+		  Stream.junk input; Stream.junk input;
+		  assert false
+	      | Id (name, _)::At _::Keyword ("pre", _)::LParen _::_ ->
+		  (* OperationCallCS [E] *)
+		  Stream.junk input; Stream.junk input; Stream.junk input;
+		  Stream.junk input;
+		  assert false
+	      | Id (name, _)::At _::Keyword ("pre", _)::_ ->
+		  (* AttributeCallCS [A] *)
+		  AttributeCall (expr, name, true)
+	      | Id (name, _)::_ ->
+		  (* AttributeCallCS [A] *)
+		  AttributeCall (expr, name, false)
+	      | Eof::_ | [] -> assert false
+	      | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t), ")"))
+	    end
       | Some Arrow _ ->
 	  Stream.junk input; Error
+	    (* IteratorExpCS *)
+	    (* OperationCallCS [B] *)
       | Some Hat _ ->
 	  Stream.junk input; Error
       | Some HatHat _ ->
 	  Stream.junk input; Error
       | _ -> expr
 and parse_atomic_expression input =
-  match Stream.peek input with
-      Some Keyword ("true", _) -> Stream.junk input; Value (Boolean true)
-    | Some Keyword ("false", _) -> Stream.junk input; Value (Boolean false)
-    | Some Int (v, _) -> Stream.junk input; Value (Integer v)
-    | Some Float (v, _) -> Stream.junk input; Value (Real v)
-    | Some Str (v, _) -> Stream.junk input; Value (String v)
-    | Some Id (_,_) ->
-        let name = parse_pathname input in
+  (* Parse atomic expressions. Here we need three tokens of lookahead,
+     in order to recognize attribute calls marked pre.
+
+     Note that two tokens would be sufficient, since we only need to see
+     the @. *)
+  match Stream.npeek 3 input with
+      (Keyword ("true", _))::_ -> Stream.junk input; Value (Boolean true)
+    | (Keyword ("false", _))::_ -> Stream.junk input; Value (Boolean false)
+    | (Int (v, _))::_ -> Stream.junk input; Value (Integer v)
+    | (Float (v, _))::_ -> Stream.junk input; Value (Real v)
+    | (Str (v, _))::_ -> Stream.junk input; Value (String v)
+    | [Id (name, _); At _; Keyword ("pre", _)] ->
+	(* AttributeCallCS [B]: SimpleNameCS "@pre"
+	   or OperationCallCS [F] *)
+	Stream.junk input; Stream.junk input; Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some LParen _ -> (* OperationCallCS [F] *) assert false
+	    | _ -> (* AttributeCallCS [B] *) AttributeCall (Self, name, true) 
+	end
+    | [Id (name, _); LParen _; _] ->
+      	(* OperationCallCS [D]: SimpleNameCS "(" args ")" *)
+	Stream.junk input;
+	assert false
+    | [Id (name, _); LBrace _; _] ->
+	(* CollectionLiteralCS *)
+	Stream.junk input;
+	Stream.junk input;
+	parse_collection_literal name input
+    | [Id (_,_); DoubleColon _; _] ->
+	let name = parse_pathname input in
 	  begin
-            match name with
-		Pathname [n] ->
-		  begin
-		    match Stream.peek input with
-			Some LBrace _ ->
-			  Stream.junk input; parse_collection_literal n input
-		      | _ -> name
-		  end
+	    match Stream.peek input with
+		Some LParen _ -> (* OperationCallCS [G] *)
+		  assert false
 	      | _ -> name
 	  end
-    | Some LParen _ ->
+    | (Id (name, _))::_ -> Stream.junk input; Identifier name
+    | (LParen _)::_ ->
 	Stream.junk input;
 	let e = parse_expression input in
 	  begin
@@ -847,10 +907,10 @@ and parse_atomic_expression input =
 	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), ")"))
 	      | None -> assert false
 	  end
-    | Some Keyword ("if", _) -> parse_if_expression input
-    | Some Eof -> assert false
-    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), ""))
-    | None -> assert false
+    | (Keyword ("if", _))::_ -> parse_if_expression input
+    | Eof::_ -> assert false
+    | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t), ""))
+    | [] -> assert false
 and parse_collection_literal name input =
   (** Parse a collection literal.
 

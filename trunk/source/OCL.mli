@@ -40,11 +40,12 @@ type
     | Collection of string * oclast list
     | Range of oclast * oclast
     | If of oclast * oclast * oclast
-    | AttributeCall of oclast * string
+    | AttributeCall of oclast * string * bool
     | OperationCall of oclast * string * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
     | Let of (string * oclast) list * oclast
+    | Self
     | Error
   and
     oclvardecl = { name: string; typespec: ocltypespec; init: oclast option }
