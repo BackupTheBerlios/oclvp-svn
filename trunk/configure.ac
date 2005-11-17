@@ -20,19 +20,34 @@ dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
 AC_INIT(oclvp, 0.0.0, mkyas@users.berlios.de)
-AC_CONFIG_SRCDIR()
-AM_INIT_AUTOMAKE
+AC_PREREQ([2.59])
+AC_CONFIG_SRCDIR([source/OCL.mli])
+AM_INIT_AUTOMAKE([1.9])
 AC_PROG_MAKE_SET
 AC_PROG_LN_S
+
+dnl Check for the tools needed to build the text-reader and text-writer
+dnl libraries
+AC_PROG_CC
+AC_PROG_RANLIB
+AM_PATH_XML2(2.5.0)
+
+dnl Check for the tools needed to run the tests.
 AC_PATH_PROG([M4], m4)
 AC_PATH_PROG([AUTOM4TE], autom4te)
 AC_PATH_PROG([DIFF], diff)
+AC_PATH_PROG([XMLLINT], xmllint)
+
+dnl Check for the tools needed to compile ocaml code.
 AC_PATH_PROG([OCAMLC], ocamlc)
 AC_PATH_PROG([OCAMLOPT], ocamlopt)
-AC_PATH_PROG([OCAMLDOC], ocamldoc)
+AC_PATH_PROG([OCAMLMKLIB], ocamlmklib)
 AC_PATH_PROG([OCAMLFIND], ocamlfind)
+
+dnl Check for the tools needed to build the documentation.
+AC_PATH_PROG([OCAMLDOC], ocamldoc)
 AC_PATH_PROG([OCAMLWEB], ocamlweb)
-AC_PATH_PROG([XMLLINT], xmllint)
+
 AC_CONFIG_TESTDIR(tests, source)
-AC_OUTPUT([Makefile info/Makefile share/Makefile source/Makefile tests/atlocal
-           tests/Makefile])
+AC_OUTPUT([Makefile info/Makefile share/Makefile source/Makefile
+	   tests/atlocal tests/Makefile])

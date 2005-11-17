@@ -21,7 +21,7 @@
  * 02111-1307, USA.
  *)
 
-open Xmlr;;
+open XmlReader;;
 
 let from_file x =
   let reader = from_filename x

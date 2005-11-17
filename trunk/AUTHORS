@@ -1,1 +1,4 @@
 Marcel Kyas <mkyas@users.berlios.de>
+
+The files source/xml/XmlReader.ml and source/xml/xmlr_stubs.c have been
+adapted from Evan Martin <martine@danga.com>

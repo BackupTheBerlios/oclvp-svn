@@ -25,7 +25,7 @@ EXTRA_DIST		= oclvp.spec
 MOSTLYCLEANFILES	=
 CLEANFILES		=
 DISTCLEANFILES		=
-MAINTAINERCLEANFILES	= aclocal.m4 configure install-sh \
+MAINTAINERCLEANFILES	= aclocal.m4 compile configure depcomp install-sh \
 			  Makefile.in missing oclvp.spec
 
 oclvp.spec: $(srcdir)/oclvp.spec.in $(srcdir)/configure.ac
