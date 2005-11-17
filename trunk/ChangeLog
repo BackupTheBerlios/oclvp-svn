@@ -1,0 +1,19 @@
+2005-11-17  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* XmlReader.ml, xmlr_stubs.c: The website at
+	<http://neugierig.org/software/ocaml/xmlr/> states, that the
+	software is licensed using the LGPL, the accompanying README
+	claims that the software is distributed under an MIT License.
+	Following clause 3. of the LGPL I distribute the modified copy of
+	this code under the terms of the ordinary GPL.
+
+	* xml_helpers.c: Made string_option from xmlr_stubs.c public as
+	xml_string_option.
+
+	* XmlWriter.ml, xmlw_stubs.c: Added exceptions if the API claims
+	that a call has failed.  Made all instances where we may pass NULL
+	in the C-API options in OCaml.
+
+	* OCL.ml: Started to implement writing trees to XML.  Replaced
+	the tuples oclcontext and oclpackage by structures.
+	

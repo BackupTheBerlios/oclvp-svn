@@ -21,12 +21,9 @@
  * 02111-1307, USA.
  */
 
+#include "xml_helpers.h"
+
 #include <libxml/xmlwriter.h>
-#include <caml/mlvalues.h>
-#include <caml/memory.h>
-#include <caml/alloc.h>
-#include <caml/fail.h>
-#include <caml/custom.h>
 
 
 
@@ -67,7 +64,7 @@ xml_writer_wrap(xmlTextWriterPtr writer)
 {
 	CAMLparam0();
 	CAMLlocal1(vwriter);
-	vwriter = alloc_custom(&xmlw_custom_operations, 4, 0, 1);
+	vwriter = caml_alloc_custom(&xmlw_custom_operations, 4, 0, 1);
 	Field(vwriter, 1) = (value)writer;
 	CAMLreturn(vwriter);
 }
@@ -84,6 +81,8 @@ xml_writer_to_file(value baseuri, value compression)
 
 	writer = xmlNewTextWriterFilename(String_val(baseuri),
 				          Int_val(compression));
+	if (writer == NULL)
+		caml_failwith("xmlNewTextWriterFilename");
 	CAMLreturn (xml_writer_wrap(writer));
 }
 
@@ -97,6 +96,8 @@ xml_writer_end_attribute(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndAttribute(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndAttribute");
 	CAMLreturn(Val_unit);
 }
 
@@ -110,6 +111,8 @@ xml_writer_end_cdata(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndCDATA(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndCDATA");
 	CAMLreturn(Val_unit);
 }
 
@@ -124,6 +127,8 @@ xml_writer_end_comment(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndComment(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndComment");
 	CAMLreturn(Val_unit);
 }
 
@@ -138,6 +143,8 @@ xml_writer_end_dtd(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndDTD(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndDTD");
 	CAMLreturn(Val_unit);
 }
 
@@ -152,6 +159,8 @@ xml_writer_end_dtd_attlist(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndDTDAttlist(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndDTDAttlist");
 	CAMLreturn(Val_unit);
 }
 
@@ -166,6 +175,8 @@ xml_writer_end_dtd_element(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndDTDElement(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndDTDElement");
 	CAMLreturn(Val_unit);
 }
 
@@ -180,6 +191,8 @@ xml_writer_end_dtd_entity(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndDTDEntity(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndDTDEntity");
 	CAMLreturn(Val_unit);
 }
 
@@ -194,6 +207,8 @@ xml_writer_end_document(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndDocument(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndDocument");
 	CAMLreturn(Val_unit);
 }
 
@@ -208,6 +223,8 @@ xml_writer_end_element(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndElement(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndElement");
 	CAMLreturn(Val_unit);
 }
 
@@ -222,6 +239,8 @@ xml_writer_end_pi(value writer)
 	int ret;
 
 	ret = xmlTextWriterEndPI(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterEndPI");
 	CAMLreturn(Val_unit);
 }
 
@@ -236,6 +255,8 @@ xml_writer_flush(value writer)
 	int ret;
 
 	ret = xmlTextWriterFlush(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterFlush");
 	CAMLreturn(Val_unit);
 }
 
@@ -251,6 +272,8 @@ xml_writer_set_indent(value writer, value indent)
 
 	ret = xmlTextWriterSetIndent(XmlWriter_val(writer),
 				     Bool_val(indent));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterSetIndent");
 	CAMLreturn(Val_unit);
 }
 
@@ -266,6 +289,8 @@ xml_writer_start_attribute(value writer, value name)
 
 	ret = xmlTextWriterStartAttribute(XmlWriter_val(writer),
 					  BAD_CAST String_val(name));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartAttribute");
 	CAMLreturn(Val_unit);
 }
 
@@ -280,9 +305,11 @@ xml_writer_start_attribute_namespace(value writer, value prefix, value name,
 	int ret;
 
 	ret = xmlTextWriterStartAttributeNS(XmlWriter_val(writer),
-					    BAD_CAST String_val(prefix),
+					    BAD_CAST xml_string_option(prefix),
 					    BAD_CAST String_val(name),
-					    BAD_CAST String_val(nsuri));
+					    BAD_CAST xml_string_option(nsuri));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartAttributeNS");
 	CAMLreturn(Val_unit);
 }
 
@@ -296,6 +323,8 @@ xml_writer_start_cdata(value writer)
 	int ret;
 
 	ret = xmlTextWriterStartCDATA(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartCDATA");
 	CAMLreturn(Val_unit);
 }
 
@@ -309,6 +338,8 @@ xml_writer_start_comment(value writer)
 	int ret;
 
 	ret = xmlTextWriterStartComment(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartComment");
 	CAMLreturn(Val_unit);
 }
 
@@ -323,8 +354,10 @@ xml_writer_start_dtd(value writer, value name, value pubid, value sysid)
 
 	ret = xmlTextWriterStartDTD(XmlWriter_val(writer),
 				    BAD_CAST String_val(name),
-				    BAD_CAST String_val(pubid),
-				    BAD_CAST String_val(sysid));
+				    BAD_CAST xml_string_option(pubid),
+				    BAD_CAST xml_string_option(sysid));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartDTD");
 	CAMLreturn(Val_unit);
 }
 
@@ -339,6 +372,8 @@ xml_writer_start_dtd_attlist(value writer, value name)
 
 	ret = xmlTextWriterStartDTDAttlist(XmlWriter_val(writer),
 					   BAD_CAST String_val(name));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartDTDAttlist");
 	CAMLreturn(Val_unit);
 }
 
@@ -353,6 +388,8 @@ xml_writer_start_dtd_element(value writer, value name)
 
 	ret = xmlTextWriterStartDTDElement(XmlWriter_val(writer),
 					   BAD_CAST String_val(name));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartDTDElement");
 	CAMLreturn(Val_unit);
 }
 
@@ -368,6 +405,8 @@ xml_writer_start_dtd_entity(value writer, value pe, value name)
 	ret = xmlTextWriterStartDTDEntity(XmlWriter_val(writer),
 					  Bool_val(pe),
 					  BAD_CAST String_val(name));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartDTDEntity");
 	CAMLreturn(Val_unit);
 }
 
@@ -383,9 +422,11 @@ xml_writer_start_document(value writer, value version, value encoding,
 	int ret;
 
 	ret = xmlTextWriterStartDocument(XmlWriter_val(writer),
-					 String_val(version),
-					 String_val(encoding),
-					 String_val(standalone));
+					 xml_string_option(version),
+					 xml_string_option(encoding),
+					 xml_string_option(standalone));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartDocument");
 	CAMLreturn(Val_unit);
 }
 
@@ -400,6 +441,8 @@ xml_writer_start_element(value writer, value name)
 
 	ret = xmlTextWriterStartElement(XmlWriter_val(writer),
 					BAD_CAST String_val(name));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartElement");
 	CAMLreturn(Val_unit);
 }
 
@@ -414,9 +457,11 @@ xml_writer_start_element_namespace(value writer, value prefix, value name,
 	int ret;
 
 	ret = xmlTextWriterStartElementNS(XmlWriter_val(writer),
-					  BAD_CAST String_val(prefix),
+					  BAD_CAST xml_string_option(prefix),
 					  BAD_CAST String_val(name),
-					  BAD_CAST String_val(nsuri));
+					  BAD_CAST xml_string_option(nsuri));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartElementNS");
 	CAMLreturn(Val_unit);
 }
 
@@ -431,6 +476,8 @@ xml_writer_start_processing_instruction(value writer, value target)
 
 	ret = xmlTextWriterStartPI(XmlWriter_val(writer),
 				   BAD_CAST String_val(target));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterStartPI");
 	CAMLreturn(Val_unit);
 }
 
@@ -446,6 +493,8 @@ xml_writer_write_attribute(value writer, value name, value content)
 	ret = xmlTextWriterWriteAttribute(XmlWriter_val(writer),
 					  BAD_CAST String_val(name),
 					  BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteAttribute");
 	CAMLreturn(Val_unit);
 }
 
@@ -465,6 +514,8 @@ xml_writer_write_attribute_namespace(value writer, value prefix, value name,
 					    BAD_CAST String_val(name),
 					    BAD_CAST String_val(nsuri),
 					    BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteAttributeNS");
 	CAMLreturn(Val_unit);
 }
 
@@ -482,6 +533,8 @@ xml_writer_write_base64(value writer, value data, value start, value len)
 				       String_val(data),
 				       Int_val(start),
 				       Int_val(len));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteBase64");
 	CAMLreturn(Val_unit);
 }
 
@@ -499,6 +552,8 @@ xml_writer_write_binhex(value writer, value data, value start, value len)
 				       String_val(data),
 				       Int_val(start),
 				       Int_val(len));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteBinHex");
 	CAMLreturn(Val_unit);
 }
 
@@ -514,6 +569,8 @@ xml_writer_write_cdata(value writer, value content)
 
 	ret = xmlTextWriterWriteCDATA(XmlWriter_val(writer),
 				      BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteCDATA");
 	CAMLreturn(Val_unit);
 }
 
@@ -529,6 +586,8 @@ xml_writer_write_comment(value writer, value content)
 
 	ret = xmlTextWriterWriteComment(XmlWriter_val(writer),
 				        BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteComment");
 	CAMLreturn(Val_unit);
 }
 
@@ -548,6 +607,8 @@ xml_writer_write_dtd(value writer, value name, value pubid, value sysid,
 				    BAD_CAST String_val(pubid),
 				    BAD_CAST String_val(sysid),
 				    BAD_CAST String_val(subset));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTD");
 	CAMLreturn(Val_unit);
 }
 
@@ -564,6 +625,8 @@ xml_writer_write_dtd_attlist(value writer, value name, value content)
 	ret = xmlTextWriterWriteDTDAttlist(XmlWriter_val(writer),
 					   BAD_CAST String_val(name),
 					   BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTDAttlist");
 	CAMLreturn(Val_unit);
 }
 
@@ -579,6 +642,8 @@ xml_writer_write_dtd_element(value writer, value name, value content)
 	ret = xmlTextWriterWriteDTDElement(XmlWriter_val(writer),
 					   BAD_CAST String_val(name),
 					   BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTDElement");
 	CAMLreturn(Val_unit);
 }
 
@@ -600,6 +665,8 @@ xml_writer_write_dtd_external_entity(value writer, value pe, value name,
 						  BAD_CAST String_val(pubid),
 						  BAD_CAST String_val(sysid),
 						  BAD_CAST String_val(ndatid));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTDExternalEntity");
 	CAMLreturn(Val_unit);
 }
 
@@ -619,6 +686,8 @@ xml_writer_write_dtd_external_entity_contents(value writer, value pubid,
 		BAD_CAST String_val(pubid),
 		BAD_CAST String_val(sysid),
 		BAD_CAST String_val(ndataid));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTDExternalEntityContents");
 	CAMLreturn(Val_unit);
 }
 
@@ -636,6 +705,8 @@ xml_writer_write_dtd_internal_entity(value writer, value pe, value name,
 						  Bool_val(pe),
 						  BAD_CAST String_val(name),
 						 BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTDInternalEntity");
 	CAMLreturn(Val_unit);
 }
 
@@ -654,6 +725,8 @@ xml_writer_write_dtd_notation(value writer, value name, value pubid,
 					    BAD_CAST String_val(name),
 					    BAD_CAST String_val(pubid),
 					    BAD_CAST String_val(sysid));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteDTDNotation");
 	CAMLreturn(Val_unit);
 }
 
@@ -668,7 +741,9 @@ xml_writer_write_element(value writer, value name, value content)
 
 	ret = xmlTextWriterWriteElement(XmlWriter_val(writer),
 					BAD_CAST String_val(name),
-					BAD_CAST String_val(content));
+					BAD_CAST xml_string_option(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteElement");
 	CAMLreturn(Val_unit);
 }
 
@@ -688,6 +763,8 @@ xml_writer_write_element_namespace(value writer, value prefix, value name,
 					  BAD_CAST String_val(name),
 					  BAD_CAST String_val(nsuri),
 					  BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteElementNS");
 	CAMLreturn(Val_unit);
 }
 
@@ -710,6 +787,8 @@ xml_writer_write_processing_instruction(value writer, value target,
 	ret = xmlTextWriterWritePI(XmlWriter_val(writer),
 				   BAD_CAST String_val(target),
 				   BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWritePI");
 	CAMLreturn(Val_unit);
 }
 
@@ -725,6 +804,8 @@ xml_writer_write_raw(value writer, value content)
 
 	ret = xmlTextWriterWriteRaw(XmlWriter_val(writer),
 				    BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteRaw");
 	CAMLreturn(Val_unit);
 }
 
@@ -741,6 +822,8 @@ xml_writer_write_raw_len(value writer, value content, value len)
 	ret = xmlTextWriterWriteRawLen(XmlWriter_val(writer),
 				       BAD_CAST String_val(content),
 				       Int_val(len));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteRawLen");
 	CAMLreturn(Val_unit);
 }
 
@@ -756,6 +839,8 @@ xml_writer_write_string(value writer, value content)
 
 	ret = xmlTextWriterWriteString(XmlWriter_val(writer),
 				       BAD_CAST String_val(content));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterWriteString");
 	CAMLreturn(Val_unit);
 }
 

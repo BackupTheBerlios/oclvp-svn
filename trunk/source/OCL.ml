@@ -24,6 +24,11 @@
 (* Abstract syntax of OCL. *)
 
 open ObjectDiagram;;
+open XmlWriter;;
+
+
+
+
 
 (** Define a type specification as they occur in our extended
     type checker  *)
@@ -38,6 +43,7 @@ type
   | Intersection of ocltypespec list (** An intersection type *)
   ;;
 
+
 let rec prettyprint_typespec t =
   match t with
       Name n -> n
@@ -50,7 +56,42 @@ and prettyprint_union oper l =
   match l with
       [] -> assert false
     | a::[] -> (prettyprint_typespec a)
-    | a::l -> (prettyprint_typespec a) ^ oper ^ (prettyprint_union oper l)
+    | t::r -> (prettyprint_typespec t) ^ oper ^ (prettyprint_union oper r)
+
+
+
+
+
+
+let rec typespec_to_xml writer t =
+  match t with
+      Name n ->
+	start_element writer "type";
+	write_attribute writer "name" n;
+	end_element writer
+    | Application (n, r) ->
+	start_element writer "typeapplication";
+	write_attribute writer "name" n;
+	typespec_to_xml writer r;
+	end_element writer
+    | Variable v ->
+	start_element writer "typevariable";
+	write_attribute writer "name" v;
+	end_element writer
+    | Union l ->
+	start_element writer "typeunion";
+	typespec_list_to_xml writer l;
+	end_element writer
+    | Intersection l ->
+	start_element writer "typeintersection";
+	typespec_list_to_xml writer l;
+	end_element writer
+    | _ -> assert false
+and typespec_list_to_xml writer l =
+  match l with
+      [t] -> typespec_to_xml writer t
+    | t::r -> typespec_to_xml writer t; typespec_list_to_xml writer r
+    | _ -> assert false
 
 
 
@@ -131,6 +172,112 @@ and prettyprint_decls l =
 and prettyprint_decl d =
   d.name ^ ": " ^ (prettyprint_typespec d.typespec) ^
     (match d.init with Some i -> " = " ^ (prettyprint i) | None -> "")
+
+
+
+
+
+(** Print a tree. *)
+let rec expression_to_xml writer expr =
+  match expr with
+      Value v ->
+	start_element writer "value";
+	end_element writer
+    | Identifier i ->
+	start_element writer "identifier";
+	write_attribute writer "name" i;
+	end_element writer
+    | Pathname path ->
+	start_element writer "pathname";
+	write_attribute writer "name" (prettyprint_pathname path);
+	end_element writer
+    | Collection (s, l) ->
+	start_element writer "collectionliteral";
+	write_attribute writer "type" s;
+	arguments_to_xml writer l;
+	end_element writer
+    | Range (l, u) ->
+	start_element writer "range";
+	start_element writer "lower";
+	expression_to_xml writer l;
+	end_element writer;
+	start_element writer "upper";
+	expression_to_xml writer u;
+	end_element writer;
+	end_element writer
+    | If (c, t, f) ->
+	start_element writer "if";
+	start_element writer "condition";
+	expression_to_xml writer c;
+	end_element writer;
+	start_element writer "then";
+	expression_to_xml writer t;
+	end_element writer;
+	start_element writer "else";
+	expression_to_xml writer f;
+	end_element writer;
+	end_element writer
+    | AttributeCall (s, a, p) ->
+	start_element writer "attributecall";
+	write_attribute writer "name" a;
+	if p then write_attribute writer "ismarkedpre" "true";
+	start_element writer "callee";
+	expression_to_xml writer s;
+	end_element writer;
+	end_element writer;
+    | OperationCall (s, m, a) ->
+	start_element writer "operationcall";
+	write_attribute writer "name" m;
+	start_element writer "callee";
+	expression_to_xml writer s;
+	end_element writer;
+	start_element writer "arguments";
+	arguments_to_xml writer a;
+	end_element writer;
+	end_element writer;
+    | CollectionCall (s, m, a) ->
+	start_element writer "collectioncall";
+	write_attribute writer "name" m;
+	start_element writer "callee";
+	expression_to_xml writer s;
+	end_element writer;
+	start_element writer "arguments";
+	arguments_to_xml writer a;
+	end_element writer;
+	end_element writer;
+    | Iterate (c, n, v, ac, arg) ->
+	start_element writer "iterate";
+	write_attribute writer "name" n;
+	start_element writer "callee";
+	expression_to_xml writer c;
+	end_element writer;
+	end_element writer;
+    | Let (v, i) ->
+	start_element writer "let";
+	start_element writer "declarations";
+	lets_to_xml writer v;
+	end_element writer;
+	start_element writer "in";
+	expression_to_xml writer i;
+	end_element writer;
+	end_element writer;
+    | Self -> write_element writer "self" None
+    | Error -> assert false
+and arguments_to_xml writer args =
+  match args with
+      [] -> ()
+    | [e] -> expression_to_xml writer e;
+    | e::r -> expression_to_xml writer e; arguments_to_xml writer r;
+and lets_to_xml writer l =
+  match l with
+      [] -> ()
+    | [(n,e)] -> let_to_xml writer n e;
+    | (n,e)::r -> let_to_xml writer n e; lets_to_xml writer r
+and let_to_xml writer name expr =
+  start_element writer "letdefinition";
+  write_attribute writer "name" name;
+  expression_to_xml writer expr;
+  end_element writer
 
 
 
@@ -990,7 +1137,7 @@ and parse_expression_list input =
 (** A constraint. *)
 type oclconstraint =
     { stereotype : string;
-      name : string option;
+      constraintname : string option;
       expression : oclast }
 
 
@@ -1010,15 +1157,15 @@ let rec parse_constraints input : oclconstraint list =
 	  begin
 	    match Stream.peek input with
 		Some Eof ->
-		  [{ stereotype = s; name = n;
+		  [{ stereotype = s; constraintname = n;
 		     expression = Value (Boolean true) }]
 	      | Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as s), _) ->
-		  { stereotype = s; name = n;
+		  { stereotype = s; constraintname = n;
 		    expression = Value (Boolean true) } ::
 		    parse_constraints input
 	      | _ ->
 		  let e = parse_expression input in
-		    { stereotype = s; name = n; expression = e } ::
+		    { stereotype = s; constraintname = n; expression = e } ::
 		      parse_constraints input
 	  end
     | _ -> []
@@ -1040,10 +1187,12 @@ and parse_constraint_colon input =
 
 
 
-type oclcontext =
-    string option * string option * oclast * ocltypespec option *
-      (oclconstraint list)
-;;
+type oclcontext = { self: string option;
+		    xxx: string option;
+		    context: oclast;
+		    typespec: ocltypespec option;
+		    constraints: oclconstraint list }
+
 
 
 
@@ -1059,19 +1208,29 @@ let parse_context input : oclcontext =
 		  begin
 		    match Stream.peek input with
 			Some Colon _ ->
-			  (None, None, name, None, [])
+			  { self = None; xxx = None; context = name;
+			    typespec = None; constraints = [] }
 		      | Some LParen _ ->
-			  (None, None, name, None, [])
+			  { self = None; xxx = None; context = name;
+			    typespec = None; constraints = [] }
 		      | Some Keyword ("endpackage", _) ->
-			  Stream.junk input; (None, None, name, None, [])
+			  Stream.junk input; 
+			  { self = None; xxx = None; context = name;
+			    typespec = None; constraints = [] }
 		      | _ ->
-			  (None, None, name, None, parse_constraints input)
+			  { self = None; xxx = None; context = name;
+			    typespec = None;
+			    constraints = parse_constraints input }
 		  end
 	    | _ -> assert false
 	end
-    | Some Keyword ("endpackage", _) -> Stream.junk input;
-	(None, None, Error, None, [])
-    | _ -> (None, None, Error, None, [])
+    | Some Keyword ("endpackage", _) ->
+	Stream.junk input;
+	{ self = None; xxx = None; context = Error; typespec = None;
+	  constraints = [] }
+    | _ -> 
+	{ self = None; xxx = None; context = Error; typespec = None;
+	  constraints = [] }
 and parse_context_name input =
     match Stream.peek input with
         Some Id (_, line) ->
@@ -1095,7 +1254,8 @@ and parse_constraints input =
 
 
 
-type oclpackage = oclast option * oclcontext list ;;
+type oclpackage = { packagename: oclast option;
+		    contextdecls: oclcontext list }
 
 
 
@@ -1107,18 +1267,20 @@ let rec parse_package input =
   (* We expect a package keyword. *)
     match Stream.peek input with
 	Some Keyword ("package", _) ->
-	  Stream.junk input; parse_package_name input
+	  Stream.junk input;
+	  parse_package_name input
       | _ -> assert false
 and parse_package_name input =
   let name = (parse_pathname input) in
-    (Some name, (parse_package_context input))
+    { packagename = Some name; contextdecls = parse_package_context input }
 and parse_package_context input =
   match Stream.peek input with
       Some Keyword ("context", _) ->
 	(parse_context input) :: parse_package_context input
     | Some Keyword ("endpackage", _) -> Stream.junk input; []
     | Some Eof -> assert false
-    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "context, endpackage"))
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				 "context, endpackage"))
     | None -> assert false
 
 
@@ -1138,9 +1300,11 @@ let rec parse_file input: oclpackage list =
 	  package :: (parse_file input)
     | Some Keyword ("context", _) ->
         let context = parse_context input in
-	  (None, [context]) :: (parse_file input)
+	  { packagename = None; contextdecls = [context] } ::
+	    (parse_file input)
     | Some Eof -> []
-    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "context, package"))
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				 "context, package"))
     | None -> assert false
 
 
@@ -1171,3 +1335,53 @@ let from_string s = parse_file (lexer (Stream.of_string s))
 
 (** Parse an OCL file from a file *)
 let from_file name = parse_file (lexer (Stream.of_channel (open_in name)))
+
+
+
+
+
+(** Write the contents of a compilation unit to XML. *)
+let rec unit_to_xml writer packages =
+  match packages with
+      [] -> ()
+    | [p] -> package_to_xml writer p
+    | p::r -> package_to_xml writer p; unit_to_xml writer r
+and package_to_xml writer package =
+    match package with
+	{ packagename = None; contextdecls = l } ->
+	  contextdecls_to_xml writer l
+      | { packagename = Some Pathname name; contextdecls = l } ->
+	  start_element writer "package";
+	  write_attribute writer "name" (prettyprint_pathname name);
+	  contextdecls_to_xml writer l;
+	  end_element writer;
+      | _ -> assert false
+and contextdecls_to_xml writer contextdecls =
+  match contextdecls with
+      [] -> ()
+    | [c] -> contextdecl_to_xml writer c
+    | c::r -> contextdecl_to_xml writer c; contextdecls_to_xml writer r
+and contextdecl_to_xml writer context =
+  start_element writer "context";
+  begin
+    match context.context with
+	Pathname n -> write_attribute writer "name" (prettyprint_pathname n)
+      | _ -> assert false
+  end;
+  constraints_to_xml writer context.constraints;
+  end_element writer
+and constraints_to_xml writer constraints =
+  match constraints with
+      [] -> ()
+    | [c] -> constraint_to_xml writer c
+    | c::r -> constraint_to_xml writer c; constraints_to_xml writer r
+and constraint_to_xml writer con =
+  start_element writer "constraint";
+  write_attribute writer "stereotype" con.stereotype;
+  begin
+    match con.constraintname with
+	None -> ()
+      | Some name -> write_attribute writer "name" name
+  end;
+  expression_to_xml writer con.expression;
+  end_element writer;

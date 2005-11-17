@@ -44,6 +44,10 @@ AC_PATH_PROG([OCAMLOPT], ocamlopt)
 AC_PATH_PROG([OCAMLMKLIB], ocamlmklib)
 AC_PATH_PROG([OCAMLFIND], ocamlfind)
 
+dnl figure out the site-lib directory.
+OCAML_SITELIB=`ocamlc -where`/site-lib
+AC_SUBST([OCAML_SITELIB], [$OCAML_SITELIB])
+
 dnl Check for the tools needed to build the documentation.
 AC_PATH_PROG([OCAMLDOC], ocamldoc)
 AC_PATH_PROG([OCAMLWEB], ocamlweb)

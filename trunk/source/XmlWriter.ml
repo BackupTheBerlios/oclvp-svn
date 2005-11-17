@@ -24,7 +24,7 @@
 (** *)
 
 type xmlwriter
-(* The type of the XML Text writer *)
+(** The type of the XML Text writer. *)
 
 external to_file: string -> int -> xmlwriter = "xml_writer_to_file"
 (** Create an XML writer which writes to a file.
@@ -70,10 +70,12 @@ external flush: xmlwriter -> unit = "xml_writer_flush"
 external set_indent: xmlwriter -> bool -> unit = "xml_writer_set_indent"
 (** Set whether the writer shall indentate the output *)
 
-external start_attribute: xmlwriter -> string -> unit = "xml_writer_start_attribute"
+external start_attribute: xmlwriter -> string -> unit =
+    "xml_writer_start_attribute"
 (** Start an attribute *)
 
-external start_attribute_namespace: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_attribute_namespace"
+external start_attribute_namespace: xmlwriter -> string option ->
+  string -> string option -> unit = "xml_writer_start_attribute_namespace"
 (** Start an attribute with namespace support *)
 
 external start_cdata: xmlwriter -> unit = "xml_writer_start_cdata"
@@ -82,7 +84,8 @@ external start_cdata: xmlwriter -> unit = "xml_writer_start_cdata"
 external start_comment: xmlwriter -> unit = "xml_writer_start_comment"
 (** Start an XML comment *)
 
-external start_dtd: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_dtd"
+external start_dtd: xmlwriter -> string -> string option -> string option ->
+  unit = "xml_writer_start_dtd"
 (** Start an XML DTD.
 
     @param writer  The XML writer.
@@ -91,26 +94,30 @@ external start_dtd: xmlwriter -> string -> string -> string -> unit = "xml_write
 		   identifier.
     @param sysid   The system identifer, which is the URI of the DTD *)
 
-external start_dtd_attlist: xmlwriter -> string -> unit = "xml_writer_start_dtd_attlist"
+external start_dtd_attlist: xmlwriter -> string ->
+  unit = "xml_writer_start_dtd_attlist"
 (** Start an XML DTD attribute list.
 
     @param writer  The XML writer.
     @param name    The name of the DTD attlist. *)
 
-external start_dtd_element: xmlwriter -> string -> unit = "xml_writer_start_dtd_element"
+external start_dtd_element: xmlwriter -> string ->
+  unit = "xml_writer_start_dtd_element"
 (** Start an XML DTD element.
 
     @param writer  The XML writer.
     @param name    The name of the DTD element. *)
 
-external start_dtd_entity: xmlwriter -> bool -> string -> unit = "xml_writer_start_dtd_entity"
+external start_dtd_entity: xmlwriter -> bool -> string ->
+  unit = "xml_writer_start_dtd_entity"
 (** Start an XML DTD entity.
 
     @param writer  The XML writer.
     @param pe      True if this is a parameter entity, false if not.
     @param name    The name of the DTD element. *)
 
-external start_document: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_document"
+external start_document: xmlwriter -> string option -> string option ->
+  string option -> unit = "xml_writer_start_document"
 (** Start an XML document.
 
     @param writer      The XML writer.
@@ -118,13 +125,15 @@ external start_document: xmlwriter -> string -> string -> string -> unit = "xml_
     @param encoding    The encoding ("UTF-8")
     @param standalone  "yes" or "no" or NULL for default. *)
 
-external start_element: xmlwriter -> string -> unit = "xml_writer_start_element"
+external start_element: xmlwriter -> string -> unit =
+    "xml_writer_start_element"
 (** Start an XML element.
 
     @param writer  The XML writer.
     @param name    The name of the element. *)
 
-external start_element_namespace: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_element_namespace"
+external start_element_namespace: xmlwriter -> string option -> string ->
+  string option -> unit = "xml_writer_start_element_namespace"
 (** Start an XML element.
 
     @param writer  The XML writer.
@@ -133,75 +142,101 @@ external start_element_namespace: xmlwriter -> string -> string -> string -> uni
     @param nsuri   Namespace URI or NULL. *)
 
 
-external start_processing_instruction: xmlwriter -> string -> unit = "xml_writer_start_processing_instruction"
+external start_processing_instruction: xmlwriter -> string -> unit =
+    "xml_writer_start_processing_instruction"
 (** Start an XML processing instruction.
 
     @param writer  The XML writer.
     @param target  The target. *)
 
-external start_attribute: xmlwriter -> string -> string -> unit = "xml_writer_start_attribute"
+external start_attribute: xmlwriter -> string -> string -> unit =
+    "xml_writer_start_attribute"
 (** Start an XML attribute.
 
     @param writer  The XML writer.
     @param name    The attribute name.
     @param content The attribute content. *)
 
-external start_attribute_namespace: xmlwriter -> string -> string -> string -> string -> unit = "xml_writer_start_attribute_namespace"
+external start_attribute_namespace: xmlwriter -> string -> string ->
+  string -> string -> unit = "xml_writer_start_attribute_namespace"
 
 external start_cdata: xmlwriter -> unit = "xml_writer_start_cdata"
 
 external start_comment: xmlwriter -> unit = "xml_writer_start_comment"
 
-external start_dtd: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_dtd"
+external start_dtd: xmlwriter -> string -> string -> string -> unit =
+    "xml_writer_start_dtd"
 
-external start_dtd_attlist: xmlwriter -> string -> string = "xml_writer_start_dtd_attlist"
+external start_dtd_attlist: xmlwriter -> string -> string =
+    "xml_writer_start_dtd_attlist"
 
-external start_dtd_element: xmlwriter -> string -> unit = "xml_writer_start_dtd_element"
+external start_dtd_element: xmlwriter -> string -> unit =
+    "xml_writer_start_dtd_element"
 
-external start_dtd_entity: xmlwriter -> bool -> string -> unit = "xml_writer_start_dtd_entity"
+external start_dtd_entity: xmlwriter -> bool -> string -> unit =
+    "xml_writer_start_dtd_entity"
 
-external start_document: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_document"
+external start_document: xmlwriter -> string -> string -> string -> unit =
+    "xml_writer_start_document"
 
-external start_element: xmlwriter -> string -> unit = "xml_writer_start_element"
+external start_element: xmlwriter -> string -> unit =
+    "xml_writer_start_element"
 
-external start_element_namespace: xmlwriter -> string -> string -> string -> unit = "xml_writer_start_element_namespace"
+external start_element_namespace: xmlwriter -> string -> string -> string ->
+  unit = "xml_writer_start_element_namespace"
 
-external start_processing_instruction: xmlwriter -> string -> unit = "xml_writer_start_processing_instruction"
+external start_processing_instruction: xmlwriter -> string ->
+  unit = "xml_writer_start_processing_instruction"
 
-external write_attribute: xmlwriter -> string -> string -> unit = "xml_writer_write_attribute"
+external write_attribute: xmlwriter -> string -> string ->
+  unit = "xml_writer_write_attribute"
 
-external write_attribute_namespace: xmlwriter -> string -> string -> string -> string -> unit = "xml_writer_write_attribute_namespace"
+external write_attribute_namespace: xmlwriter -> string -> string -> string ->
+  string -> unit = "xml_writer_write_attribute_namespace"
 
-external write_base64: xmlwriter -> string -> int -> int -> unit = "xml_writer_write_base64"
+external write_base64: xmlwriter -> string -> int -> int -> unit =
+    "xml_writer_write_base64"
 
-external write_binhex: xmlwriter -> string -> int -> int -> unit = "xml_writer_write_binhex"
+external write_binhex: xmlwriter -> string -> int -> int -> unit =
+    "xml_writer_write_binhex"
 
 external write_cdata: xmlwriter -> string -> unit = "xml_writer_write_cdata"
 
-external write_comment: xmlwriter -> string -> unit = "xml_writer_write_comment"
+external write_comment: xmlwriter -> string -> unit =
+    "xml_writer_write_comment"
 
-external write_dtd: xmlwriter -> string -> string -> string -> string -> unit = "xml_writer_write_dtd"
+external write_dtd: xmlwriter -> string -> string -> string -> string ->
+  unit = "xml_writer_write_dtd"
 
-external write_dtd_attlist: xmlwriter -> string -> string -> unit = "xml_writer_write_dtd_attlist"
+external write_dtd_attlist: xmlwriter -> string -> string ->
+  unit = "xml_writer_write_dtd_attlist"
 
-external write_dtd_content: xmlwriter -> string -> string -> unit = "xml_writer_write_dtd_content"
+external write_dtd_content: xmlwriter -> string -> string ->
+  unit = "xml_writer_write_dtd_content"
 
 (* XXX: Add a prototype for xml_writer_write_dtd_external_entity *)
 
-external write_dtd_external_entity_contents: xmlwriter -> string -> string -> string -> unit = "xml_writer_write_dtd_external_entity_contents"
+external write_dtd_external_entity_contents: xmlwriter -> string -> string ->
+  string -> unit = "xml_writer_write_dtd_external_entity_contents"
 
-external write_dtd_internal_entity: xmlwriter -> bool -> string -> string -> unit = "xml_writer_write_dtd_internal_entity"
+external write_dtd_internal_entity: xmlwriter -> bool -> string -> string ->
+  unit = "xml_writer_write_dtd_internal_entity"
 
-external write_dtd_notation: xmlwriter -> string -> string -> string -> unit = "xml_writer_write_dtd_notation"
+external write_dtd_notation: xmlwriter -> string -> string -> string ->
+  unit = "xml_writer_write_dtd_notation"
 
-external write_element: xmlwriter -> string -> string -> unit = "xml_writer_write_element"
+external write_element: xmlwriter -> string -> string option -> unit =
+    "xml_writer_write_element"
 
-external write_element_namespace: xmlwriter -> string -> string -> string -> string -> unit = "xml_writer_write_element_namespace"
+external write_element_namespace: xmlwriter -> string -> string -> string ->
+  string -> unit = "xml_writer_write_element_namespace"
 
-external write_processing_instruction: xmlwriter -> string -> string -> unit = "xml_writer_write_processing_instruction"
+external write_processing_instruction: xmlwriter -> string -> string ->
+  unit = "xml_writer_write_processing_instruction"
 
 external write_raw: xmlwriter -> string -> unit = "xml_writer_write_raw"
 
-external write_raw_len: xmlwriter -> string -> int -> unit = "xml_writer_write_raw_len"
+external write_raw_len: xmlwriter -> string -> int -> unit =
+    "xml_writer_write_raw_len"
 
 external write_string: xmlwriter -> string -> unit = "xml_writer_write_string"

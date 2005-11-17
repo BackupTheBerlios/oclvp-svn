@@ -34,15 +34,16 @@ export OCAMLPATH
 
 noinst_LIBRARIES	= libxml_stubs.a
 
-libxml_stubs_a_SOURCES	= xmlr_stubs.c xmlw_stubs.c XmlReader.ml XmlWriter.ml
-AM_CPPFLAGS		= $(XML_CPPFLAGS) -I`ocamlc -where`
+libxml_stubs_a_SOURCES	= xml_helpers.c xml_helpers.h xmlr_stubs.c \
+			  xmlw_stubs.c XmlReader.ml XmlWriter.ml
+AM_CPPFLAGS		= $(XML_CPPFLAGS) -I`ocamlc -where` -DCAML_NAME_SPACE
 AM_CFLAGS		= -Wall -Wno-unused -Werror
 
-
-OCAMLCOPTS		= -I . -I ${srcdir} -linkpkg -package . -dllpath `pwd`
+XML_DESTDIR		= `pwd`
+OCAMLCOPTS		= -I . -I ${srcdir} -linkpkg -package . -dllpath ${XML_DESTDIR}
 OCAMLOPTOPTS		= -I . -I ${srcdir} -linkpkg -package .
 
-bin_PROGRAMS		= oclvp oclvp.opt
+bin_PROGRAMS	= oclvp oclvp.opt
 
 oclvp_SOURCES		= Version.ml ClassDiagram.ml ObjectDiagram.ml \
 			  StateMachine.ml OCL.mli OCL.ml SUML.ml XMI.ml \
@@ -74,12 +75,21 @@ Version.ml: ${top_srcdir}/configure.ac
 	@echo "let oclvp_package = \"${PACKAGE}\";;" >> Version.ml
 	@echo Wrote $@.
 
-dllxml.so libxml.a xml.cma xml.cmxa: xml-stamp
+dllxml.so: xml-stamp
+
+libxml.a: xml-stamp
+
+xml.a: xml-stamp
+
+xml.cma: xml-stamp
+
+xml.cmxa: xml-stamp
 
 xml-stamp: $(filter %.cmo, $(patsubst %.ml, %.cmo, $(libxml_stubs_a_SOURCES)))\
 	$(filter %.cmx, $(patsubst %.ml, %.cmx, $(libxml_stubs_a_SOURCES))) \
 	$(filter %.o, $(patsubst %.c, %.o, $(libxml_stubs_a_SOURCES)))
 	$(OCAMLMKLIB) -o xml $^ $(XML_LIBS)
+	echo $@ > $@
 
 META: $(srcdir)/META.in $(top_srcdir)/configure.ac
 	rm -f META && sed -e s/@VERSION\@/$(VERSION)/g < $< > $@
@@ -104,9 +114,10 @@ oclvp.tex: $(oclvp_SOURCES)
 distclean-local:
 	test ! -d html || rm -rf html
 
-install-hook:
-	$(OCAMLFIND) install xml META XmlReader.ml XmlWriter.ml \
-		Xml.cma Xml.cmxa libxml.a dllxml.so
+install-exec-local: META xml.cma xml.cmxa libxml.a dllxml.so xml.a
+	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) \
+		xml META XmlReader.ml XmlWriter.ml \
+		xml.cma xml.cmxa libxml.a dllxml.so xml.a
 
 oclvp: xml.cma
 oclvp.opt: xml.cmxa

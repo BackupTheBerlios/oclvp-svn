@@ -56,18 +56,21 @@ type
 
 type oclconstraint =
     { stereotype : string;
-      name : string option;
+      constraintname : string option;
       expression : oclast }
 
 
 
 
 
-type oclcontext =
-    string option * string option * oclast * ocltypespec option *
-      (oclconstraint list)
+type oclcontext = { self: string option;
+		    xxx: string option;
+		    context: oclast;
+		    typespec: ocltypespec option;
+		    constraints: oclconstraint list }
 
-type oclpackage = oclast option * oclcontext list
+type oclpackage = { packagename: oclast option;
+		    contextdecls: oclcontext list }
 
 val prettyprint_typespec : ocltypespec -> string
 (** Pretty print a type specification. *)
@@ -84,3 +87,8 @@ val from_string : string -> oclpackage list
 
 val from_file : string -> oclpackage list
 
+val typespec_to_xml: XmlWriter.xmlwriter -> ocltypespec -> unit
+
+val expression_to_xml: XmlWriter.xmlwriter -> oclast -> unit
+
+val unit_to_xml: XmlWriter.xmlwriter -> oclpackage list -> unit
