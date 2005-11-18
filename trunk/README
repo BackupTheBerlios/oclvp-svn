@@ -4,4 +4,17 @@ oclvp - Object Constraint Language Verification Platform
 oclvp provides tools which translates a subset of OCL and UML into
 the input language of the PVS theorem prover.
 
+Build requirements
+~~~~~~~~~~~~~~~~~~
 
+In order to build oclvp, you need to have ocaml-findlib installed.
+Versions prior to 1.1 have problems with uninstalling packages, so
+you should use ocaml-findlib version 1.1 or later.
+
+Objective Caml (ocaml) version 3.08 or later
+<http://caml.inria.fr/ocaml/index.en.html> is needed as a compiler.
+
+In addition, you need libxml2 2.6.x and libxslt 1.1.x (and related tools)
+<http://xmlsoft.org/>.  These are usually installed by default on most
+Linux distributions; be sure to instal the corresponding development
+packages.

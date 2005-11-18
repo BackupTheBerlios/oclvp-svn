@@ -31,3 +31,7 @@ MAINTAINERCLEANFILES	= aclocal.m4 compile configure depcomp install-sh \
 oclvp.spec: $(srcdir)/oclvp.spec.in $(srcdir)/configure.ac
 	sed -e s/@VERSION\@/$(VERSION)/g \
 	    -e s/@PKGCONFIG_VERSION\@/$(PKGCONFIG_VERSION)/g < $< > $@
+
+.PHONY: doc ocamldoc ocamlweb
+doc ocamldoc ocamlweb:
+	make -C source $@

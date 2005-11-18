@@ -30,7 +30,7 @@ dnl Check for the tools needed to build the text-reader and text-writer
 dnl libraries
 AC_PROG_CC
 AC_PROG_RANLIB
-AM_PATH_XML2(2.5.0)
+AM_PATH_XML2(2.6.0)
 AM_PATH_XSLT(1.1.0)
 
 dnl Check for the tools needed to run the tests.
@@ -40,10 +40,9 @@ AC_PATH_PROG([DIFF], diff)
 AC_PATH_PROG([XMLLINT], xmllint)
 
 dnl Check for the tools needed to compile ocaml code.
-AC_PATH_PROG([OCAMLC], ocamlc)
-AC_PATH_PROG([OCAMLOPT], ocamlopt)
-AC_PATH_PROG([OCAMLMKLIB], ocamlmklib)
-AC_PATH_PROG([OCAMLFIND], ocamlfind)
+AC_CHECK_PROG([OCAMLFIND], [ocamlfind], [ocamlfind], [false])
+AC_CHECK_PROG([OCAMLMKLIB], [ocamlmklib], [ocamlmklib], [false])
+AC_CHECK_PROG([OCAMLWEB], [ocamlweb], [ocamlweb], [echo])
 
 dnl figure out the site-lib directory. The following is bogus...
 OCAML_LIBDIR=$libdir/ocaml

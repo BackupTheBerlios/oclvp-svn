@@ -19,6 +19,17 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
+# Findlib related
+OCAMLPATH		= .
+export OCAMLPATH
+
+# OCaml compilers.
+OCAMLC			= $(OCAMLFIND) ocamlc
+OCAMLCP			= $(OCAMLFIND) ocamlcp
+OCAMLOPT		= $(OCAMLFIND) ocamlopt
+OCAMLDEP		= $(OCAMLFIND) ocamldep
+OCAMLDOC		= $(OCAMLFIND) ocamldoc
+
 MOSTLYCLEANFILES	= *~ *.aux *.log
 CLEANFILES		= *.cmi *.cmo *.cmx *.cma *.cmxa *.o *.tex \
 			  dllxml.so xml.a libxml.a xml-stamp
@@ -28,9 +39,6 @@ MAINTAINERCLEANFILES	= depend Makefile.in Version.ml
 EXTRA_DIST		= depend META.in
 
 BUILT_SOURCES		= META Version.ml
-
-OCAMLPATH		= .
-export OCAMLPATH
 
 noinst_LIBRARIES	= libxml_stubs.a
 
@@ -42,8 +50,8 @@ AM_CPPFLAGS		= $(XML_CPPFLAGS) $(XSLT_CPPFLAGS) -I`ocamlc -where` \
 AM_CFLAGS		= -Wall -Wno-unused -Werror
 
 XML_DESTDIR		= `pwd`
-OCAMLCOPTS		= -I . -I ${srcdir} -linkpkg -package . -dllpath ${XML_DESTDIR}
-OCAMLOPTOPTS		= -I . -I ${srcdir} -linkpkg -package .
+OCAMLC_FLAGS		= -I . -I ${srcdir} -linkpkg -package . -dllpath ${XML_DESTDIR}
+OCAMLOPT_FLAGS		= -I . -I ${srcdir} -linkpkg -package .
 
 bin_PROGRAMS	= oclvp oclvp.opt
 
@@ -56,26 +64,20 @@ oclvp_opt_SOURCES	= $(oclvp_SOURCES)
 all-local: oclvp
 
 oclvp: $(patsubst %.ml, %.cmo, $(patsubst %.mli, %.cmi, $(oclvp_SOURCES)))
-	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) $(filter %.cmo, $^) -o $@
+	$(OCAMLC) $(OCAMLC_FLAGS) $(filter %.cmo, $^) -o $@
 
 oclvp.opt: $(patsubst %.ml, %.cmx, $(patsubst %.mli, %.cmi, $(oclvp_SOURCES)))
-	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) $(filter %.cmx, $^) -o $@
+	$(OCAMLOPT) $(OCAMLOPT_FLAGS) $(filter %.cmx, $^) -o $@
 
 .PRECIOUS: *.cmo *.cmi *.cmx *.cma *.cmxa xml-stamp
 .ml.cmo:
-	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) -c $< -o $@
+	$(OCAMLC) $(OCAMLC_FLAGS) -c $< -o $@
 
 .mli.cmi:
-	$(OCAMLFIND) ocamlc $(OCAMLCOPTS) -c $< -o $@
+	$(OCAMLC) $(OCAMLC_FLAGS) -c $< -o $@
 
 .ml.cmx:
-	$(OCAMLFIND) ocamlopt $(OCAMLOPTOPTS) -c $< -o $@
-
-Version.ml: ${top_srcdir}/configure.ac
-	@rm -f Version.ml
-	@echo "let oclvp_version = \"${VERSION}\";;" > Version.ml
-	@echo "let oclvp_package = \"${PACKAGE}\";;" >> Version.ml
-	@echo Wrote $@.
+	$(OCAMLOPT) $(OCAMLOPT_FLAGS) -c $< -o $@
 
 dllxml.so: xml-stamp
 
@@ -93,22 +95,32 @@ xml-stamp: $(filter %.cmo, $(patsubst %.ml, %.cmo, $(libxml_stubs_a_SOURCES)))\
 	$(OCAMLMKLIB) -o xml $^ $(XML_LIBS) $(XSLT_LIBS)
 	echo $@ > $@
 
+Version.ml: ${top_srcdir}/configure.ac
+	@rm -f Version.ml
+	@echo "let oclvp_version = \"${VERSION}\";;" > Version.ml
+	@echo "let oclvp_package = \"${PACKAGE}\";;" >> Version.ml
+	@echo Wrote $@.
+
 META: $(srcdir)/META.in $(top_srcdir)/configure.ac
 	rm -f META && sed -e s/@VERSION\@/$(VERSION)/g < $< > $@
 
 depend: $(oclvp_SOURCES) $(filter $(libxml_stubs_a_SOURCES), %.ml)
-	$(OCAMLFIND) ocamldep $^ > $@
+	$(OCAMLDEP) $(OCAMLDEP_FLAGS) $^ > $@
 
-.PHONY: ocamldoc
-ocamldoc: oclvp.dump oclvp.pdf
+# Build the documentation.
+.PHONY: doc ocamldoc ocamlweb
+doc: ocamldoc ocamlweb
+
+ocamldoc: oclvp.dump
+
+ocamlweb: oclvp.pdf
 
 oclvp.dump: $(oclvp_SOURCES) $(filter %.ml, $(libxml_stubs_a_SOURCES))
 	test -d html || mkdir html
-	$(OCAMLDOC) -html -d html -dump $@ -hide -all-params $^
+	$(OCAMLDOC) -html -d html -dump $@ -all-params $^
 
-%.pdf: %.tex
-	pdflatex $<
-	pdflatex $<
+.tex.pdf:
+	pdflatex $< && pdflatex $<
 
 oclvp.tex: $(oclvp_SOURCES)
 	$(OCAMLWEB) -o $@ $^
@@ -118,15 +130,16 @@ distclean-local:
 
 install-exec-local: META xml.cma xml.cmxa libxml.a dllxml.so xml.a
 	mkdir -p $(DESTDIR)$(OCAML_SITELIB)
-	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf \
+	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) \
+			     -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf \
 		xml META xml.cma xml.cmxa libxml.a dllxml.so xml.a \
 		$(srcdir)/XmlReader.ml $(srcdir)/XmlWriter.ml \
 		$(srcdir)/Xslt.ml
 
 uninstall-local:
-	$(OCAMLFIND) remove -destdir $(DESTDIR)$(OCAML_SITELIB) -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf xml
-
-	
+	$(OCAMLFIND) remove -destdir $(DESTDIR)$(OCAML_SITELIB) \
+			    -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf \
+		xml
 
 oclvp: xml.cma
 oclvp.opt: xml.cmxa

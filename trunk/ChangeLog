@@ -1,14 +1,25 @@
 2005-11-18  Marcel Kyas  <mkyas@users.berlios.de>
 
+	* data/xmi2suml.xsl:  Added the old style-sheet translating XMI
+	1.0 to SUML 0.2.
+
+	* data/Makefile.am: Distribute it.
+
+	* README:  Added build requirements.
+
 	* xslt_stub.c, Xslt.ml:  Very simple binding to libxslt.
 
 	* source/Makefile.am: Correctly install the module for distcheck
-	target.  Added a ocamlfind related uninstall hook.
+	target.  Added a ocamlfind related uninstall hook.  Define the
+	different compilers in terms of ocamlfind.  Smaller cleanups.
 
-	* Makefile.am: Delete backup files with make clean.
+	* Makefile.am: Delete backup files with make clean.  Added
+	ocamldoc and ocamlweb rules for building the API documentation.
 
 	* configure.ac: Check for libxslt, set the ocaml-related
-	directories in a sensible manner.
+	directories in a sensible manner.  Define the different compilers
+	in terms of ocamlfind.  Smaller corrections if the build tools are
+	not found.  Require libxml 2.6.0 or later.
 
 	* testsuite.at: Added tests for context declarations within
 	packages.  Added tests for operation call expressions.
