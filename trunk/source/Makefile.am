@@ -35,8 +35,10 @@ export OCAMLPATH
 noinst_LIBRARIES	= libxml_stubs.a
 
 libxml_stubs_a_SOURCES	= xml_helpers.c xml_helpers.h xmlr_stubs.c \
-			  xmlw_stubs.c XmlReader.ml XmlWriter.ml
-AM_CPPFLAGS		= $(XML_CPPFLAGS) -I`ocamlc -where` -DCAML_NAME_SPACE
+			  xmlw_stubs.c xslt_stubs.c \
+			  XmlReader.ml XmlWriter.ml Xslt.ml
+AM_CPPFLAGS		= $(XML_CPPFLAGS) $(XSLT_CPPFLAGS) -I`ocamlc -where` \
+			  -DCAML_NAME_SPACE
 AM_CFLAGS		= -Wall -Wno-unused -Werror
 
 XML_DESTDIR		= `pwd`
@@ -88,7 +90,7 @@ xml.cmxa: xml-stamp
 xml-stamp: $(filter %.cmo, $(patsubst %.ml, %.cmo, $(libxml_stubs_a_SOURCES)))\
 	$(filter %.cmx, $(patsubst %.ml, %.cmx, $(libxml_stubs_a_SOURCES))) \
 	$(filter %.o, $(patsubst %.c, %.o, $(libxml_stubs_a_SOURCES)))
-	$(OCAMLMKLIB) -o xml $^ $(XML_LIBS)
+	$(OCAMLMKLIB) -o xml $^ $(XML_LIBS) $(XSLT_LIBS)
 	echo $@ > $@
 
 META: $(srcdir)/META.in $(top_srcdir)/configure.ac
@@ -100,9 +102,9 @@ depend: $(oclvp_SOURCES) $(filter $(libxml_stubs_a_SOURCES), %.ml)
 .PHONY: ocamldoc
 ocamldoc: oclvp.dump oclvp.pdf
 
-oclvp.dump: $(oclvp_SOURCES)
+oclvp.dump: $(oclvp_SOURCES) $(filter %.ml, $(libxml_stubs_a_SOURCES))
 	test -d html || mkdir html
-	$(OCAMLDOC) -html -d html -dump $@ -hide XmlReader,XmlWriter -all-params $^
+	$(OCAMLDOC) -html -d html -dump $@ -hide -all-params $^
 
 %.pdf: %.tex
 	pdflatex $<
@@ -115,9 +117,16 @@ distclean-local:
 	test ! -d html || rm -rf html
 
 install-exec-local: META xml.cma xml.cmxa libxml.a dllxml.so xml.a
-	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) \
-		xml META XmlReader.ml XmlWriter.ml \
-		xml.cma xml.cmxa libxml.a dllxml.so xml.a
+	mkdir -p $(DESTDIR)$(OCAML_SITELIB)
+	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf \
+		xml META xml.cma xml.cmxa libxml.a dllxml.so xml.a \
+		$(srcdir)/XmlReader.ml $(srcdir)/XmlWriter.ml \
+		$(srcdir)/Xslt.ml
+
+uninstall-local:
+	$(OCAMLFIND) remove -destdir $(DESTDIR)$(OCAML_SITELIB) -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf xml
+
+	
 
 oclvp: xml.cma
 oclvp.opt: xml.cmxa

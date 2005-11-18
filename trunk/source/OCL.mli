@@ -41,7 +41,7 @@ type
     | Range of oclast * oclast
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string * bool
-    | OperationCall of oclast * string * oclast list
+    | OperationCall of oclast * string * bool * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
     | Let of (string * oclast) list * oclast

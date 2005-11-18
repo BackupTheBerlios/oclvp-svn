@@ -111,7 +111,7 @@ type
     | Range of oclast * oclast
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string * bool
-    | OperationCall of oclast * string * oclast list
+    | OperationCall of oclast * string * bool * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
     | Let of (string * oclast) list * oclast
@@ -145,8 +145,9 @@ let rec prettyprint tree =
 	"if " ^ (prettyprint c) ^ " then " ^ (prettyprint t) ^ " else " ^
 	  (prettyprint f) ^ " endif"
     | AttributeCall (s, a, p) -> (prettyprint s) ^ "." ^ a ^ (if p then "@pre" else "")
-    | OperationCall (s, m, a) ->
-	(prettyprint s) ^ "." ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
+    | OperationCall (s, m, p, a) ->
+	(prettyprint s) ^ "." ^ m ^ (if p then "@pre" else "") ^ "(" ^
+	  (prettyprint_args a) ^ ")"
     | CollectionCall (s, m, a) ->
 	(prettyprint s) ^ "->" ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
     | Iterate (c, n, v, ac, arg) ->
@@ -225,9 +226,10 @@ let rec expression_to_xml writer expr =
 	expression_to_xml writer s;
 	end_element writer;
 	end_element writer;
-    | OperationCall (s, m, a) ->
+    | OperationCall (s, m, p, a) ->
 	start_element writer "operationcall";
 	write_attribute writer "name" m;
+	if p then write_attribute writer "ismarkedpre" "true";
 	start_element writer "callee";
 	expression_to_xml writer s;
 	end_element writer;
@@ -321,17 +323,17 @@ let rec ocltypechecker cd env (expression: oclast) =
       let ct = ocltypechecker cd env c
       in
       TypeError (* fetch () n *)
-  | OperationCall (Identifier i, "allInstances", []) ->
+  | OperationCall (Identifier i, "allInstances", _, []) ->
         if true (* i is a type name *) then
             (Application ("Set", (Name i)))
         else
             TypeError
-  | OperationCall (callee, "flatten", []) ->
+  | OperationCall (callee, "flatten", _, []) ->
       let calleetype = ocltypechecker cd env callee
       in ( match calleetype with
                Application (n1, Application(n2, t2)) -> Application (n1, t2)
              | t -> t )
-  | OperationCall (callee, name, args) ->
+  | OperationCall (callee, name, _, args) ->
         let calleetype = ocltypechecker cd env callee
         and argstype = List.map (ocltypechecker cd env) args
         in (match calleetype with
@@ -391,7 +393,7 @@ let rec oclinterpreter cd cs ps env expr =
               Value Reference r ->
 		Value (Hashtbl.find (List.nth cs.objects r).attributes n)
             | _ -> Error)
-    | OperationCall (c, n, args) ->
+    | OperationCall (c, n, p, args) ->
 	let vc = oclinterpreter cd cs ps env c
 	and va = List.map (oclinterpreter cd cs ps env) args
 	in (match vc with
@@ -879,11 +881,11 @@ and parse_binary_expression input =
 	Some Keyword ("xor", _) ->
 	  Stream.junk input;
 	  let rhs = parse_binary_expression input in
-	    OperationCall (lhs, "xor", [rhs])
+	    OperationCall (lhs, "xor", false, [rhs])
       | Some Keyword ("iff", _) ->
 	  Stream.junk input;
 	  let rhs = parse_binary_expression input in
-	    OperationCall (lhs, "iff", [rhs])
+	    OperationCall (lhs, "iff", false, [rhs])
       | _ -> lhs
 and parse_or_expression input =
   let lhs = parse_and_expression input in
@@ -891,7 +893,7 @@ and parse_or_expression input =
 	Some Keyword ("or", _) ->
 	  Stream.junk input;
 	  let rhs = parse_or_expression input in
-	    OperationCall (lhs, "or", [rhs])
+	    OperationCall (lhs, "or", false, [rhs])
       | _ -> lhs
 and parse_and_expression input =
   let lhs = parse_equals_expression input in
@@ -899,7 +901,7 @@ and parse_and_expression input =
 	Some Keyword ("and", _) ->
 	  Stream.junk input;
 	  let rhs = parse_and_expression input in
-	    OperationCall (lhs, "and", [rhs])
+	    OperationCall (lhs, "and", false, [rhs])
       | _ -> lhs
 and parse_equals_expression input =
   let lhs = parse_relational_expression input in
@@ -907,11 +909,11 @@ and parse_equals_expression input =
 	Some NotEq _ ->
 	  Stream.junk input;
 	  let rhs = parse_relational_expression input in
-	    OperationCall (lhs, "<>", [rhs])
+	    OperationCall (lhs, "<>", false, [rhs])
       | Some Equals _ ->
 	  Stream.junk input;
 	  let rhs = parse_relational_expression input in
-	    OperationCall (lhs, "=", [rhs])
+	    OperationCall (lhs, "=", false, [rhs])
       | _ -> lhs
 and parse_relational_expression input =
   let lhs = parse_add_expression input in
@@ -919,19 +921,19 @@ and parse_relational_expression input =
 	Some Less _ ->
 	  Stream.junk input;
 	  let rhs = parse_add_expression input in
-	    OperationCall (lhs, "<", [rhs])
+	    OperationCall (lhs, "<", false, [rhs])
       | Some LessEq _ ->
 	  Stream.junk input;
 	  let rhs = parse_add_expression input in
-	    OperationCall (lhs, "<=", [rhs])
+	    OperationCall (lhs, "<=", false, [rhs])
       | Some Greater _ ->
 	  Stream.junk input;
 	  let rhs = parse_add_expression input in
-	    OperationCall (lhs, ">", [rhs])
+	    OperationCall (lhs, ">", false, [rhs])
       | Some GreaterEq _ ->
 	  Stream.junk input;
 	  let rhs = parse_add_expression input in
-	    OperationCall (lhs, ">=", [rhs])
+	    OperationCall (lhs, ">=", false, [rhs])
       | _ -> lhs
 and parse_add_expression input =
   let lhs = parse_mult_expression input in
@@ -939,11 +941,11 @@ and parse_add_expression input =
 	Some Minus _ ->
 	  Stream.junk input;
 	  let rhs = parse_add_expression input in
-	    OperationCall (lhs, "-", [rhs])
+	    OperationCall (lhs, "-", false, [rhs])
       | Some Plus _ ->
 	  Stream.junk input;
 	  let rhs = parse_add_expression input in
-	    OperationCall (lhs, "+", [rhs])
+	    OperationCall (lhs, "+", false, [rhs])
       | _ -> lhs
 and parse_mult_expression input =
   let lhs = parse_unary_expression input in
@@ -951,15 +953,15 @@ and parse_mult_expression input =
 	Some Mult _ ->
 	  Stream.junk input;
 	  let rhs = parse_mult_expression input in
-	    OperationCall (lhs, "*", [rhs])
+	    OperationCall (lhs, "*", false, [rhs])
       | Some Div _  ->
 	  Stream.junk input;
 	  let rhs = parse_mult_expression input in
-	    OperationCall (lhs, "/", [rhs])
+	    OperationCall (lhs, "/", false, [rhs])
       | Some Keyword ("mod", _) ->
 	  Stream.junk input;
 	  let rhs = parse_mult_expression input in
-	    OperationCall (lhs, "mod", [rhs])
+	    OperationCall (lhs, "mod", false, [rhs])
       | _ -> lhs (* Not a binary operator, so end of the binary expression. *)
 and parse_unary_expression input =
   (* Handle OperationCallCS [H]; for now we only allow - and not here instead
@@ -967,11 +969,13 @@ and parse_unary_expression input =
   match Stream.peek input with
       Some Keyword ("not" as oper, _) ->
 	Stream.junk input;
-	OperationCall (parse_unary_expression input, oper, []);
+	OperationCall (parse_unary_expression input, oper, false, []);
     | Some Minus _ ->
 	Stream.junk input;
-	OperationCall (parse_unary_expression input, "-", []);
-    | _ -> let expr = parse_atomic_expression input in parse_postfix_expression expr input
+	OperationCall (parse_unary_expression input, "-", false, []);
+    | _ ->
+	let expr = parse_atomic_expression input in
+	parse_postfix_expression expr input
 and parse_postfix_expression expr input =
   (* Parse a postfix of an expression. *)
   match Stream.peek input with
@@ -980,23 +984,35 @@ and parse_postfix_expression expr input =
 	  begin
 	    match Stream.npeek 4 input with
 		Id (name, _)::LParen _::_ -> (* OperationCallCS [C] *)
-		  Stream.junk input; Stream.junk input;
-		  assert false
+		  Stream.junk input;
+		  Stream.junk input;
+		  let args = parse_arguments input in
+		  let res = OperationCall (expr, name, false, args) in
+		    parse_postfix_expression res input
 	      | Id (name, _)::At _::Keyword ("pre", _)::LParen _::_ ->
 		  (* OperationCallCS [E] *)
-		  Stream.junk input; Stream.junk input; Stream.junk input;
 		  Stream.junk input;
-		  assert false
+		  Stream.junk input;
+		  Stream.junk input;
+		  Stream.junk input;
+		  let args = parse_arguments input in
+		  let res = OperationCall (expr, name, true, args) in
+		    parse_postfix_expression res input
 	      | Id (name, _)::At _::Keyword ("pre", _)::_ ->
 		  (* AttributeCallCS [A] *)
-		  Stream.junk input; Stream.junk input; Stream.junk input;
-		  parse_postfix_expression (AttributeCall (expr, name, true)) input
+		  Stream.junk input;
+		  Stream.junk input;
+		  Stream.junk input;
+		  parse_postfix_expression (AttributeCall (expr, name, true))
+		    input
 	      | Id (name, _)::_ ->
 		  (* AttributeCallCS [A] *)
 		  Stream.junk input;
-		  parse_postfix_expression (AttributeCall (expr, name, false)) input
+		  parse_postfix_expression (AttributeCall (expr, name, false))
+		    input
 	      | Eof::_ | [] -> assert false
-	      | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t), ")"))
+	      | t::_ -> raise (BadToken ((get_token_name t),
+					 (get_token_line t), ")"))
 	    end
       | Some Arrow _ ->
 	  Stream.junk input; Error
@@ -1022,16 +1038,23 @@ and parse_atomic_expression input =
     | [Id (name, _); At _; Keyword ("pre", _)] ->
 	(* AttributeCallCS [B]: SimpleNameCS "@pre"
 	   or OperationCallCS [F] *)
-	Stream.junk input; Stream.junk input; Stream.junk input;
+	Stream.junk input;
+	Stream.junk input;
+	Stream.junk input;
 	begin
 	  match Stream.peek input with
-	      Some LParen _ -> (* OperationCallCS [F] *) assert false
+	      Some LParen _ -> (* OperationCallCS [F] *)
+		Stream.junk input;
+		let args = parse_arguments input;
+		in OperationCall (Self, name, true, args)
 	    | _ -> (* AttributeCallCS [B] *) AttributeCall (Self, name, true) 
 	end
     | [Id (name, _); LParen _; _] ->
       	(* OperationCallCS [D]: SimpleNameCS "(" args ")" *)
 	Stream.junk input;
-	assert false
+	Stream.junk input;
+	let args = parse_arguments input in
+	  OperationCall(Self, name, false, args)
     | [Id (name, _); LBrace _; _] ->
 	(* CollectionLiteralCS *)
 	Stream.junk input;
@@ -1120,10 +1143,25 @@ and parse_if_expression input =
 			| None -> assert false
 		    end
 	      | Some Eof -> assert false
-	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "then"))
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), "then"))
 	      | None -> assert false
 	  end
     | _ -> assert false
+and parse_arguments input =
+  (* Assume that the caller has consumed the opening parenthesis *)
+  match Stream.peek input with
+      Some RParen _ -> Stream.junk input; []
+    | _ ->
+	let args = parse_expression_list input in
+	begin
+	  match Stream.peek input with
+	      Some RParen _ -> Stream.junk input; args
+	    | Some Eof -> assert false
+	    | Some t -> raise (BadToken ((get_token_name t),
+					 (get_token_line t), ") or ,"))
+	    | None -> assert false
+	end
 and parse_expression_list input =
   let expr = (parse_expression input) in
     match Stream.peek input with
@@ -1156,10 +1194,12 @@ let rec parse_constraints input : oclconstraint list =
 	let n = parse_constraint_name input in
 	  begin
 	    match Stream.peek input with
-		Some Eof ->
+		Some Keyword ("endpackage", _) | Some Eof ->
+		  (* endpackage will be consumed in parse_package_contexts! *)
 		  [{ stereotype = s; constraintname = n;
 		     expression = Value (Boolean true) }]
-	      | Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as s), _) ->
+	      | Some Keyword (( "inv" | "pre" | "post" | "init" |
+				    "derive" as s), _) ->
 		  { stereotype = s; constraintname = n;
 		    expression = Value (Boolean true) } ::
 		    parse_constraints input
@@ -1272,11 +1312,12 @@ let rec parse_package input =
       | _ -> assert false
 and parse_package_name input =
   let name = (parse_pathname input) in
-    { packagename = Some name; contextdecls = parse_package_context input }
-and parse_package_context input =
+    { packagename = Some name; contextdecls = parse_package_contexts input }
+and parse_package_contexts input =
   match Stream.peek input with
       Some Keyword ("context", _) ->
-	(parse_context input) :: parse_package_context input
+	let context = parse_context input in
+	context :: parse_package_contexts input
     | Some Keyword ("endpackage", _) -> Stream.junk input; []
     | Some Eof -> assert false
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),

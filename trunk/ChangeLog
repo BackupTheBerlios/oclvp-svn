@@ -1,3 +1,23 @@
+2005-11-18  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* xslt_stub.c, Xslt.ml:  Very simple binding to libxslt.
+
+	* source/Makefile.am: Correctly install the module for distcheck
+	target.  Added a ocamlfind related uninstall hook.
+
+	* Makefile.am: Delete backup files with make clean.
+
+	* configure.ac: Check for libxslt, set the ocaml-related
+	directories in a sensible manner.
+
+	* testsuite.at: Added tests for context declarations within
+	packages.  Added tests for operation call expressions.
+
+	* OCL.ml: Corrected an error in parsing context declarations
+	within packages.  Implemented parsing of operation call
+	expressions.  Adapted abstract syntax to be able to mark
+	OperationCalls @pre.
+
 2005-11-17  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* XmlReader.ml, xmlr_stubs.c: The website at

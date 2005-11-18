@@ -31,6 +31,7 @@ dnl libraries
 AC_PROG_CC
 AC_PROG_RANLIB
 AM_PATH_XML2(2.5.0)
+AM_PATH_XSLT(1.1.0)
 
 dnl Check for the tools needed to run the tests.
 AC_PATH_PROG([M4], m4)
@@ -44,8 +45,10 @@ AC_PATH_PROG([OCAMLOPT], ocamlopt)
 AC_PATH_PROG([OCAMLMKLIB], ocamlmklib)
 AC_PATH_PROG([OCAMLFIND], ocamlfind)
 
-dnl figure out the site-lib directory.
-OCAML_SITELIB=`ocamlc -where`/site-lib
+dnl figure out the site-lib directory. The following is bogus...
+OCAML_LIBDIR=$libdir/ocaml
+OCAML_SITELIB='${OCAML_LIBDIR}/site-lib'
+AC_SUBST([OCAML_LIBDIR], [$OCAML_LIBDIR])
 AC_SUBST([OCAML_SITELIB], [$OCAML_SITELIB])
 
 dnl Check for the tools needed to build the documentation.

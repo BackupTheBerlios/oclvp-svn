@@ -22,7 +22,7 @@
 SUBDIRS			= info share source tests
 EXTRA_DIST		= oclvp.spec
 
-MOSTLYCLEANFILES	=
+MOSTLYCLEANFILES	= *~
 CLEANFILES		=
 DISTCLEANFILES		=
 MAINTAINERCLEANFILES	= aclocal.m4 compile configure depcomp install-sh \
