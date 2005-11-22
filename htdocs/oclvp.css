@@ -1,0 +1,83 @@
+/*  Marcel Kyas' Style Sheet  */
+
+body  {
+  background-color: white;
+  color: black;
+  font-size: 12pt;
+  font-family: serif;
+}
+
+code {
+  background-color: #B0D0D0;
+  color: black;
+  font-size: 10pt;
+  font-family: monospace;
+}
+
+code.variable {
+  font-style: italic;
+}
+
+pre {
+  background-color: #E0E0E8;
+  color: black;
+  font-size: 10pt;
+  font-family: monospace;
+}
+
+p {
+  display: block;
+  text-align: justify;
+}
+
+p.warning {
+  background-color: #FF9F7F;
+  color: white;
+}
+
+p.footer {
+  font-size: 100%;
+  font-family: sans-serif;
+  font-style: italic;
+}
+
+dt.reference {
+  background-color: white;
+  color: red;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+  font-family: sans-serif;
+}
+
+h1 { font-size: 173%; }
+
+h1.centered { text-align: center; }
+
+h2 { font-size: 144%; }
+
+h2.centered { text-align: center; }
+
+h3, h4 { font-size: 120%; }
+
+h5, h6 { font-size: 100%; }
+
+a {
+  text-decoration: underline;
+}
+
+a:link {
+  color: blue;
+  background-color: white;
+}
+
+a:visited {
+  color: gray;
+  background-color: white;
+}
+
+a:active {
+  color: red;
+  background-color: white;
+}
