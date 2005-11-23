@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-
 <!-- This page has been written by Marcel Kyas.
      (c) 2005, all rights reserved.  -->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
@@ -10,23 +9,175 @@
     <meta http-equiv="Content-Type" content="text/html; utf-8" />
     <meta name="person" content="Marcel Kyas" />
     <meta name="author" content="Marcel Kyas" />
-    <meta name="date" content="2005-11-05" />
-    <link rel="stylesheet" type="text/css" href="http://oclvp.berlios.de/oclvp.css" />
+    <meta name="date" content="2005-11-23" />
+    <link rel="stylesheet" type="text/css" href="oclvp.css" />
   </head>
 
   <body>
+    <p>
+      This page is still under construction and will contain more information
+      later.
+    </p>
+
     <h1>Object Constraint Language Verification Platform</h1>
 
     <p>
       This page describes my <em>oclvp</em> tool, which evolved from the
-      <a href="http://www.informatik.uni-kiel.de/~mky/omega/suml.html">suml</a>
-      tool I have developed in the context of the
-      <a href="http://www-omega.imag.fr/index.php">Omega Project (IST-2001-33522)</a>.
+      <a href="http://www.informatik.uni-kiel.de/~mky/omega/suml.html">SUML</a>
+      tool developed in the context of the
+      <a href="http://www-omega.imag.fr/">Omega Project (IST-2001-33522)</a>.
     </p>
 
     <p>
-      This page is currently a stub and will contain more information
-      later.
+      We have implemented a tool that translates a subset of UML, as
+      exported by certain UML modelling tools in the XMI format, to
+      the input language of the theorem prover
+      <a href="http://pvs.csl.sri.com/">PVS</a>.
+    </p>
+
+    <p>
+      Because XMI allows for many variantions of the exported format, it
+      is tedious to implement a reader for this format.  To simplify this
+      process, we have implemented a translation of two XMI
+      <em>dialects</em>, namely the one of Rhapsody and the one of ArgoUML,
+      to an intermediate format, which we call
+      <a href="#suml"><em>SUML</em></a>.
+    </p>
+
+    <p>
+      We have implemented a translator from SUML to PVS.  The same
+      tool also reads and typechecks OCL constraints and generates
+      corresponding proof obligations in PVS.
+    </p>
+
+    <p>
+      As an alternative, constraints can be specified directly in PVS.
+      This also enables the use of TLPVS, which is a framework for
+      proving linear-time temporal logic properties of UML models.
+    </p>
+
+    <h2 id="suml">SUML</h2>
+
+    <p>
+      The SUML (simple UML) format is a simplified XML representation
+      of UML models, which are commonly interchanged in the XMI
+      format.
+    </p>
+
+    <p>
+      The issue with XMI is, that while it is a standard format for
+      model exchange, it contains too much information, and is not
+      really portable between different tools.  Each tool may define
+      its own <em>variant</em> of this format.  To simplify the
+      implementation of our tools, we defined a translation of subsets
+      of the XMI format as implemented by Rhapsody and by Rational
+      Rose into the SUML format.
+    </p>
+
+    <p>
+      Tools for translating XMI to SUML and PVS are available <a
+      href="http://homepages.cwi.nl/~jacob/uml2pvs.html">here</a>.
+    </p>
+
+    <h2 id="ocl">OCL</h2>
+    <p>
+      <em>oclvp</em> implements a translation of a subset of OCL
+      into the input language of the theorem prover
+      <a href="http://pvs.csl.sri.com/">PVS</a>.
+    </p>
+
+    <p>
+      In order to avoid implementing a three-valued logic within the
+      framework of PVS, we decided to define a sound translation of
+      OCL into a two-valued logic.  The advantage is a more direct
+      representation of constraints in PVS.  The disadvantage is, that
+      a set of constraints, which are undefined in OCL, may be
+      provable in PVS.
+    </p>
+
+    <p>
+      OCL is a three-valued logic, because the semantics was defined
+      for an executable language and not a logic.  If the evaluation
+      of an expression raises an exception or diverges, then the
+      constraint is considered to be undefined.  However, such notions
+      do not exist in the declarative semantics of a logic.  Finally,
+      for our purposes the <em>provability</em> of a constraint is
+      more important than whether its execution may terminate.
+    </p>
+
+    <h2 id="publications">Publications</h2>
+
+    <p>
+      The ideas implemented in this tool are described in the following
+      publications:
+    </p>
+
+    <p id="fmoods05">
+      M. Kyas
+     <em>
+       An extended type-system for OCL supporting templates and transformations.     </em>
+     In: M. Steffen and Gianluigi Zavattaro,
+     Formal Methods for Open Object-Based Distributed Systems (FMOODS 2005),
+     Lecture Notes in Computer Science, number 3535, pages 83--98,
+     Springer-Verlag.
+     (<a href="fmoods-05.pdf">PDF (247 KB)</a>)
+     &#x00A9; <a href="http://www.springerlink.com">Springer</a>.
+    </p>
+
+    <p id="sfedl04">
+      M. Kyas,
+      <a href="http://www.informatik.uni-kiel.de/~hf">H. Fecher</a>,
+      <a href="http://homepages.cwi.nl/~frb/">F.S. de Boer</a>,
+      <a href="http://homepages.cwi.nl/~jacob/">J. Jacob</a>,
+      <a href="http://www.cs.ru.nl/~hooman/">J. Hooman</a>,
+      <a href="http://www.science.uva.nl/~mbz/">M. van der Zwaag</a>,
+      <a href="http://www.wisdom.weizmann.ac.il/~tamarah/">T. Arons</a>,
+      and
+      <a href="http://www.cs.nyu.edu/~kugler/">H. Kugler</a>,
+      <em>Formalizing UML Models and OCL Constraints in PVS</em>.
+      In: G. L&#x00FC;ttgen, N. Mart&#xed;nez Madrid, and M. Mendler,
+      Proceedings of the Second Workshop on Semantic Foundations of
+      Engineering Design Languages (SFEDL 2004), Electronic Notes in
+      Theoretical Computer Science, volume 115, pages 39-47, Elsevier.
+      (<a href="sfedl-04.pdf">PDF (249 KB)</a>)  The version provided here
+      differs from the version published in ENTCS in replaced Figures.
+    </p>
+
+    <p id="cvuml03">
+      M. Kyas and
+      <a href="http://homepages.cwi.nl/~frb/">F.S. de Boer</a>,
+      <em>On Message Specification in OCL.</em>
+      In: Frank S. de Boer and Marcello Bonsangue, Proceedings of the
+      Workshop on the Compositional Verification of UML Models (CVUML),
+      Electronic Notes in Theoretical Computer Science, volume 101,
+      pages 73-93, Elsevier.
+      (<a href="cvuml-03.pdf">PDF (422 KB)</a>)
+    </p>
+
+    <h2 id="acknowledgements">Acknowledgements</h2>
+
+    <p class="acknowledgements">
+      The work described here has financially be supported by the
+      IST-Project
+      <a href="http://www-omega.imag.fr/">Omega (IST-2001-33522)</a> and
+      DFG/NWO-Project <a href="">Mobi-J</a>.
+
+      The work was conducted while I was employed at the
+      <a href="http://www.uni-kiel.de/">
+        Christian-Albrechts-Universit&auml;t zu Kiel
+      </a>,
+      <a href="http://www.informatik.uni-kiel.de/">
+	Institut f&uuml;r Infromatik und Praktische Mathematik
+      </a>,
+      <a href="http://www.informatik.uni-kiel.de/inf/deRoever/">
+	Chair of Software-Technology
+      </a>.
+    </p>
+
+    <p class="acklogos">
+      <a href="http://www.informatik.uni-kiel.de/">
+        <img src="cauifilogo.png" alt="CAU IfI" width="150" height="77" />
+      </a>
     </p>
 
     <hr/>
@@ -45,9 +196,9 @@
         <img src="valid-xhtml10.png" alt="Valid XHTML 1.0!" width="88" height="31" />
       </a>
       <a href="http://www.informatik.uni-kiel.de/~mky/">
-        Marcel Kyas
+        Marcel&#x00A0;Kyas
       </a>&#x00A0;(<a href="http://developer.berlios.de/sendmessage.php?touser=21181">mkyas at users.berlios.de</a>)
-      Last modified:&#x00A0;2005-11-05
+      Last&#x00A0;modified:&#x00A0;2005-11-23
     </p>
   </body>
 </html>
