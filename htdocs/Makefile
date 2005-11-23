@@ -20,7 +20,8 @@ user	= mkyas
 host	= shell.berlios.de
 htmldir	= /home/groups/oclvp/htdocs
 
-SOURCES	= cauifilogo.png mwcts.png valid-css.png valid-xhtml10.png oclvp.css \
+SOURCES	= cauifilogo.png ist-logo.png mwcts.png valid-css.png \
+	  valid-xhtml10.png oclvp.css \
 	  index.html
 
 all:
