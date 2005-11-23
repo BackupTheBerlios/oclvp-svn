@@ -21,7 +21,14 @@
  * 02111-1307, USA.
  *)
 
-external transform: string -> string -> string -> unit = "xslt_transform"
+type stylesheet
+
+external parse_stylesheet_doc: Xml.doc -> stylesheet =
+    "xslt_parse_stylesheet_doc"
+
+let parse_stylesheet name = parse_stylesheet_doc (Xml.from_file name)
+
+external transform: stylesheet -> Xml.doc -> Xml.doc = "xslt_transform"
 (** Transform an XML document.
 
     @param stylesheet  The stylesheet used for transforming the document.

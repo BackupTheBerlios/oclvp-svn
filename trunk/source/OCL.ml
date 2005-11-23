@@ -111,15 +111,17 @@ type
     | Range of oclast * oclast
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string * bool
+    | AssociationCall of oclast * string * oclast list * bool
     | OperationCall of oclast * string * bool * oclast list
     | CollectionCall of oclast * string * oclast list
-    | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
-    | Let of (string * oclast) list * oclast
+    | Iterate of oclast * string * oclvardecl list * oclvardecl option * oclast
+    | Let of oclvardecl list * oclast
     | Self
     | Error
   and
-    oclvardecl = { name: string; typespec: ocltypespec; init: oclast option }
-  ;;
+    oclvardecl = { varname: string; typespec: ocltypespec option;
+		   init: oclast option }
+
 
 
 
@@ -145,6 +147,7 @@ let rec prettyprint tree =
 	"if " ^ (prettyprint c) ^ " then " ^ (prettyprint t) ^ " else " ^
 	  (prettyprint f) ^ " endif"
     | AttributeCall (s, a, p) -> (prettyprint s) ^ "." ^ a ^ (if p then "@pre" else "")
+    | AssociationCall (_, _, _, _) -> assert false
     | OperationCall (s, m, p, a) ->
 	(prettyprint s) ^ "." ^ m ^ (if p then "@pre" else "") ^ "(" ^
 	  (prettyprint_args a) ^ ")"
@@ -152,7 +155,7 @@ let rec prettyprint tree =
 	(prettyprint s) ^ "->" ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
     | Iterate (c, n, v, ac, arg) ->
 	(prettyprint c) ^ "->" ^ n
-    | Let (v, i) -> "let " ^ (prettyprint_lets v) ^ " in " ^ (prettyprint i)
+    | Let (v, i) -> "let " ^ (prettyprint_decls v) ^ " in " ^ (prettyprint i)
     | Self -> "self"
     | Error -> assert false
 and prettyprint_args args =
@@ -160,19 +163,21 @@ and prettyprint_args args =
       [] -> ""
     | e::[] -> (prettyprint e)
     | e::r -> (prettyprint e) ^ ", " ^ (prettyprint_args r)
-and prettyprint_lets l =
-  match l with
-      [] -> assert false
-    | (n,e)::[] -> n ^ " = " ^ (prettyprint e)
-    | (n,e)::r -> n ^ " = " ^ (prettyprint e) ^ ", " ^ (prettyprint_lets r)
 and prettyprint_decls l =
   match l with 
       [] -> assert false
     | d::[] -> (prettyprint_decl d)
     | d::r -> (prettyprint_decl d) ^ "," ^ (prettyprint_decls r)
 and prettyprint_decl d =
-  d.name ^ ": " ^ (prettyprint_typespec d.typespec) ^
-    (match d.init with Some i -> " = " ^ (prettyprint i) | None -> "")
+  match d with
+      { varname = name; typespec = None; init = None } ->
+	name
+    | { varname = name; typespec = None; init = Some i } ->
+	name ^ " = " ^ (prettyprint i)
+    | { varname = name; typespec = Some t; init = None } ->
+	name ^ ": " ^ (prettyprint_typespec t)
+    | { varname = name; typespec = Some t; init = Some i } ->
+	name ^ ": " ^ (prettyprint_typespec t) ^ " = " ^ (prettyprint i)
 
 
 
@@ -195,7 +200,7 @@ let rec expression_to_xml writer expr =
     | Collection (s, l) ->
 	start_element writer "collectionliteral";
 	write_attribute writer "type" s;
-	arguments_to_xml writer l;
+	List.iter (expression_to_xml writer) l;	
 	end_element writer
     | Range (l, u) ->
 	start_element writer "range";
@@ -226,6 +231,20 @@ let rec expression_to_xml writer expr =
 	expression_to_xml writer s;
 	end_element writer;
 	end_element writer;
+    | AssociationCall (s, n, q, p) -> 
+	start_element writer "associationcall";
+	write_attribute writer "name" n;
+	if p then write_attribute writer "ismarkedpre" "true";
+	start_element writer "callee";
+	expression_to_xml writer s;
+	end_element writer;
+	start_element writer "qualifiers";
+	List.iter (fun e ->
+		     start_element writer "qualifier";
+		     expression_to_xml writer e;
+		     end_element writer) q;
+	end_element writer;
+	end_element writer;
     | OperationCall (s, m, p, a) ->
 	start_element writer "operationcall";
 	write_attribute writer "name" m;
@@ -234,7 +253,7 @@ let rec expression_to_xml writer expr =
 	expression_to_xml writer s;
 	end_element writer;
 	start_element writer "arguments";
-	arguments_to_xml writer a;
+	List.iter (expression_to_xml writer) a;
 	end_element writer;
 	end_element writer;
     | CollectionCall (s, m, a) ->
@@ -244,7 +263,7 @@ let rec expression_to_xml writer expr =
 	expression_to_xml writer s;
 	end_element writer;
 	start_element writer "arguments";
-	arguments_to_xml writer a;
+	List.iter (expression_to_xml writer) a;
 	end_element writer;
 	end_element writer;
     | Iterate (c, n, v, ac, arg) ->
@@ -256,8 +275,8 @@ let rec expression_to_xml writer expr =
 	end_element writer;
     | Let (v, i) ->
 	start_element writer "let";
-	start_element writer "declarations";
-	lets_to_xml writer v;
+	start_element writer "definitions";
+	List.iter (vardecl_to_xml writer) v;
 	end_element writer;
 	start_element writer "in";
 	expression_to_xml writer i;
@@ -265,20 +284,14 @@ let rec expression_to_xml writer expr =
 	end_element writer;
     | Self -> write_element writer "self" None
     | Error -> assert false
-and arguments_to_xml writer args =
-  match args with
-      [] -> ()
-    | [e] -> expression_to_xml writer e;
-    | e::r -> expression_to_xml writer e; arguments_to_xml writer r;
-and lets_to_xml writer l =
-  match l with
-      [] -> ()
-    | [(n,e)] -> let_to_xml writer n e;
-    | (n,e)::r -> let_to_xml writer n e; lets_to_xml writer r
-and let_to_xml writer name expr =
-  start_element writer "letdefinition";
-  write_attribute writer "name" name;
-  expression_to_xml writer expr;
+and vardecl_to_xml writer decl =
+  start_element writer "vardecl";
+  write_attribute writer "name" decl.varname;
+  begin
+    match decl.init with
+	Some init -> expression_to_xml writer init
+      | _ -> ()
+  end;
   end_element writer
 
 
@@ -475,11 +488,9 @@ type ocltoken =
   | Bar of int
   | RBrace of int
   | Tilde of int
-  | Eof
 
 let get_token_line token =
   match token with
-  | Eof -> assert false
   | Keyword (_, line) -> line
   | Id (_, line) -> line
   | Int (_, line) -> line
@@ -524,7 +535,6 @@ let get_token_line token =
 
 let get_token_name token =
   match token with
-  | Eof -> "<<EOF>>"
   | Keyword (name, _) -> "<<keyword: " ^ name ^ ">>"
   | Id (name, _) -> "<<identifier: " ^ name ^ ">>"
   | Int (i, _) -> "<<integer: " ^ (string_of_int i) ^ ">>"
@@ -595,9 +605,8 @@ let lexer input =
   let keyword_table = Hashtbl.create 29 in
     List.iter (fun s -> Hashtbl.add keyword_table s s)
       [ "and"; "context"; "def"; "derive"; "else"; "endif"; "endpackage";
-	"false"; "if"; "implies"; "init"; "inv"; "in"; "iterate"; "let";
-	"not"; "or"; "package"; "post"; "pre"; "then"; "true"; "Tuple";
-	"xor" ];
+	"false"; "if"; "implies"; "init"; "inv"; "in"; "let";
+	"not"; "or"; "package"; "post"; "pre"; "then"; "true"; "xor" ];
     let identifier_or_keyword id =
       try Some (Keyword ((Hashtbl.find keyword_table id), !line))
       with Not_found -> Some (Id (id, !line))
@@ -676,14 +685,14 @@ let lexer input =
 	    Stream.junk stream;
 	    begin
               match Stream.peek stream with
-		 Some '^' -> Stream.junk stream; Some(HatHat !line)
-	       | _ -> Some(Hat !line)
+		  Some '^' -> Stream.junk stream; Some(HatHat !line)
+		| _ -> Some(Hat !line)
             end
 	| Some '{' -> Stream.junk stream; Some(LBrace !line)
 	| Some '|' -> Stream.junk stream; Some(Bar !line)
 	| Some '}' -> Stream.junk stream; Some(RBrace !line)
 	| Some '~' -> Stream.junk stream; Some(Tilde !line)
-	| _ -> Some Eof
+	| _ -> None
     and parse_identifier_or_keyword stream =
       match Stream.peek stream with
 	  Some ('0'..'9' | 'A'..'Z' | 'a'..'z' | '_' | '\192'..'\255' as c) ->
@@ -803,7 +812,6 @@ let parse_identifier_or_operator input =
     | Some Equals _ -> Identifier "="
     | Some Greater _ -> Identifier ">"
     | Some GreaterEq _ -> Identifier ">="
-    | Some Eof -> assert false
     | Some t -> raise (BadToken (get_token_name t, get_token_line t,
 				 "<<id>>, *, +, -, /, <. <=, <>, =, >, >="))
     | None -> assert false
@@ -828,6 +836,31 @@ and parse_pathname_double_colon input path =
 
 
 
+let rec parse_typespec input =
+  match Stream.peek input with
+      Some Id (name, _) ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some LParen _ ->
+		Stream.junk input;
+		let arg = parse_typespec input in
+		  begin
+		    match Stream.peek input with
+			Some RParen _ -> Application (name, arg)
+		      | Some t -> raise  (BadToken ((get_token_name t),
+						    (get_token_line t), ")"))
+		      | None -> assert false
+		  end
+	    | _ -> Name name
+	end
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				 "<<identifier>>"))
+    | None -> assert false
+
+
+
+
 
 (** Parse an OCL expression.
 
@@ -842,29 +875,24 @@ and parse_pathname_double_colon input path =
     we try to use a good approximation and await bug reports which we
     the can try to evaluate.
 
-    To do: Implement the _ convention described in section 9.3, probably in
-    the type checker. *)
+    To do: Implement the \_ convention described in section 9.3,
+    probably in the type checker. *)
 let rec parse_expression input =
   match Stream.peek input with
-      Some Keyword ("let", _) -> parse_let_expression input
-    | _ -> parse_binary_expression input
+      Some Keyword ("let", _) -> Stream.junk input; parse_let_expression input
+    | Some _ -> parse_binary_expression input
+    | None -> Error
 and parse_let_expression input =
-  match Stream.peek input with
-      Some Keyword ("let", _) ->
-	Stream.junk input;
-	let l = parse_let_definitions input in
-	  begin
-	    match Stream.peek input with
-		Some Keyword ("in", _) ->
-		  Stream.junk input;
-		  let i = parse_expression input in Let (l, i)
-	      | Some Eof -> assert false
-	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "in"))
-	      | None -> assert false
-	  end
-    | _ -> assert false
-and parse_let_definitions input =
-  []
+  let l = parse_vardecls input in
+    begin
+      match Stream.peek input with
+	  Some Keyword ("in", _) ->
+	    Stream.junk input;
+	    let i = parse_expression input in Let (l, i)
+	| Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				     "in"))
+	| None -> assert false
+    end
 and parse_binary_expression input =
   (** Parse a binary expression, that is, a xor/iff expression.
 
@@ -975,54 +1003,231 @@ and parse_unary_expression input =
 	OperationCall (parse_unary_expression input, "-", false, []);
     | _ ->
 	let expr = parse_atomic_expression input in
-	parse_postfix_expression expr input
+	  parse_postfix_expression expr input
 and parse_postfix_expression expr input =
   (* Parse a postfix of an expression. *)
   match Stream.peek input with
-	Some Dot _ ->
+      Some Dot _ ->
+	Stream.junk input;
+	begin
+	  match Stream.npeek 4 input with
+	      Id (name, _)::LParen _::_ -> (* OperationCallCS [C] *)
+		Stream.junk input;
+		Stream.junk input;
+		let args = parse_arguments input in
+		let res = OperationCall (expr, name, false, args) in
+		  parse_postfix_expression res input
+	    | Id (name, _)::LBracket _::_ ->
+		(* AssociationCallCS[B] or AssociationClassCallCS[B]*)
+		Stream.junk input;
+		Stream.junk input;
+		let args = parse_qualifiers input in
+		let ismarkedpre = parse_pre_mark input in
+		let res = AssociationCall (expr, name, args, ismarkedpre) in
+		  parse_postfix_expression res input
+	    | Id (name, _)::At _::Keyword ("pre", _)::LParen _::_ ->
+		(* OperationCallCS [E] *)
+		Stream.junk input;
+		Stream.junk input;
+		Stream.junk input;
+		Stream.junk input;
+		let args = parse_arguments input in
+		let res = OperationCall (expr, name, true, args) in
+		  parse_postfix_expression res input
+	    | Id (name, _)::At _::Keyword ("pre", _)::_ ->
+		(* AttributeCallCS [A] *)
+		Stream.junk input;
+		Stream.junk input;
+		Stream.junk input;
+		parse_postfix_expression (AttributeCall (expr, name, true))
+		  input
+	    | Id (name, _)::_ ->
+		(* AttributeCallCS [A] *)
+		Stream.junk input;
+		parse_postfix_expression (AttributeCall (expr, name, false))
+		  input
+	    | t::_ -> raise (BadToken ((get_token_name t),
+				       (get_token_line t), ")"))
+	    | _ -> assert false
+	end
+    | Some Arrow _ ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some Id ("iterate", _) ->
+		(* IterateExpressionCS ::=  *)
+		Stream.junk input;
+		begin 
+		  match Stream.peek input with
+		      Some LParen _ ->
+			Stream.junk input;
+			let res = parse_iterate_expression input expr in
+			  parse_postfix_expression res input
+		    | Some t -> raise (BadToken ((get_token_name t),
+						 (get_token_line t), "("))
+		    | _ -> assert false
+		end
+	    | Some Id (name, _) ->
+		Stream.junk input;
+		begin
+		  match Stream.peek input with
+		      Some LParen _ ->
+			(* IteratorExpCS[A] ::= OclExpressionCS[1]
+			   '->' simpleNameCS '(' (
+			   VariableDeclarationCS,* '|') OclExpression
+			   ')' The Cases [B-E] are \emph{not} parsed
+			   here, because they conflict with the other
+			   grammar rules; instead the type checker
+			   will build the correct trees after
+			   disambiguation.
+
+			   OperationCallCS [B] ::= OclExpressionCS[1] '->'
+			   simpleNameCS '(' args ')'. *)
+
+			Stream.junk input;
+			let res = parse_iterator_or_collectioncall input expr
+			  name [] in parse_postfix_expression res input
+		    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "("))
+		    | None -> assert false
+		end
+	    | Some t -> raise (BadToken ((get_token_name t),
+					 (get_token_line t), "<<identifier>>"))
+	    | None -> assert false
+	end
+    | Some Hat _ ->
+	Stream.junk input; Error
+    | Some HatHat _ ->
+	Stream.junk input; Error
+    | _ -> expr
+and parse_iterator_or_collectioncall input expr name (args: oclast list) =
+  (* This function is used to parse an iterator expression or an operation
+     call expression.  The grammar for this is ambigous and required the
+     use of an GLR parser in the old prototype.
+
+     Here we proceed as follows: Assume that after the lparen we have
+     a list of variable declarations.  *)
+  match Stream.npeek 2 input with
+      [Id (_, _); (Colon _) | (Bar _) | (Semicolon _)] ->
+	(* This is a type declaration or finishes a list of type
+	   declarations, therefore we proceed with parsing iterator
+	   expressions. Before we proceed we convert the list of
+	   variables into a list of variable declarations without type
+	   specifiers and initializers.
+
+	   Observe that providing an initializer should not be allowed
+	   in the variable declaration list of an iterate expression.
+	   This would also introduce another ambiguity, because a term
+	   of the form Id Equals Expression can also mean a boolean
+	   predicate.  *)
+	parse_iterator_expression input expr name
+	  (List.map convert_to_vardecl args)
+    | [Id (name, _); Comma _] ->
+	(* This may be an iterator expression of an operation call expression,
+	   so append a variable node and continue. *)
+	Stream.junk input; Stream.junk input;
+	parse_iterator_or_collectioncall input expr name
+	  (args @ [Identifier name])
+    | [Id (_, _); Equals _] ->
+	(* Parse a variable declaration of the form variable =
+	   initializer, which can also be a normal expression.  It is
+	   actually nonsensical to parse this here, because the
+	   semantics of these variable declarations is not defined for
+	   iterate expressions.  On the other hand, the OCL grammar
+	   allows it.  *)
+	let arg = parse_expression input in
+	  begin
+	    match Stream.peek input with
+		Some Comma _ -> Stream.junk input
+	      | _ -> ()
+	  end;
+	  parse_iterator_or_collectioncall input expr name (args @ [arg])	  
+    | _ -> 
+	(* The list ends with an identifier; however, we conclude that
+	   these are arguments to a call expression. It \emph{may} be
+	   the case that this is an Iterator expression (as defined by
+	   cases [B-E]) but the type checker will take care of this.
+
+	   Since we do not know what kind of expression this is, we
+	   assume that this is an ordinary operation call
+	   expression. *)
+	parse_collectioncall_expression input expr name args
+and parse_iterator_expression input expr name decls =
+  match Stream.peek input with
+      Some Id (_, _) ->
+	parse_iterator_expression input expr name
+	  (decls @ [parse_vardecl input])
+    | Some Semicolon _ ->
+	assert false
+    | Some Bar _ ->
+	Stream.junk input;
+	let arg = parse_expression input in 
+	  begin
+	    match Stream.peek input with
+		Some RParen _ ->
+		  Stream.junk input;
+		  Iterate (expr, name, decls, None, arg)
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), ")"))
+	      | None -> assert false
+	  end
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				 "<<identifier>> or ; or |"))
+    | None -> assert false
+and parse_collectioncall_expression input expr name (args: oclast list) =
+  let remainder = parse_arguments input in
+    CollectionCall (expr, name, args @ remainder)
+and convert_to_vardecl expr =
+  match expr with
+      Identifier name -> { varname = name; typespec = None; init = None }
+    | OperationCall (Identifier name, "=", _, [arg]) ->
+	{ varname = name; typespec = None; init = Some arg }
+    | _ -> assert false
+and parse_iterate_expression input expr =
+  (* Parse an iterate expression *)
+  let vardecls = parse_vardecls input in
+    match Stream.peek input with
+	Some Semicolon _ ->
+	  Stream.junk input;
+	  let decl = parse_vardecl input in
+	    begin
+	      match Stream.peek input with
+		  Some Bar _ ->
+		    Stream.junk input;
+		    let arg = parse_expression input in
+		    begin
+		      match Stream.peek input with
+			  Some RParen _ ->
+			    Stream.junk input;
+			    Iterate (expr, "iterate", vardecls, Some decl, arg)
+			| Some t -> raise (BadToken ((get_token_name t),
+						     (get_token_line t), ")"))
+			| None -> assert false
+		    end
+		| Some t -> raise (BadToken ((get_token_name t),
+					     (get_token_line t),
+					     "|"))
+		| None -> assert false
+	    end
+      | Some Bar line ->
 	  Stream.junk input;
 	  begin
-	    match Stream.npeek 4 input with
-		Id (name, _)::LParen _::_ -> (* OperationCallCS [C] *)
-		  Stream.junk input;
-		  Stream.junk input;
-		  let args = parse_arguments input in
-		  let res = OperationCall (expr, name, false, args) in
-		    parse_postfix_expression res input
-	      | Id (name, _)::At _::Keyword ("pre", _)::LParen _::_ ->
-		  (* OperationCallCS [E] *)
-		  Stream.junk input;
-		  Stream.junk input;
-		  Stream.junk input;
-		  Stream.junk input;
-		  let args = parse_arguments input in
-		  let res = OperationCall (expr, name, true, args) in
-		    parse_postfix_expression res input
-	      | Id (name, _)::At _::Keyword ("pre", _)::_ ->
-		  (* AttributeCallCS [A] *)
-		  Stream.junk input;
-		  Stream.junk input;
-		  Stream.junk input;
-		  parse_postfix_expression (AttributeCall (expr, name, true))
-		    input
-	      | Id (name, _)::_ ->
-		  (* AttributeCallCS [A] *)
-		  Stream.junk input;
-		  parse_postfix_expression (AttributeCall (expr, name, false))
-		    input
-	      | Eof::_ | [] -> assert false
-	      | t::_ -> raise (BadToken ((get_token_name t),
-					 (get_token_line t), ")"))
-	    end
-      | Some Arrow _ ->
-	  Stream.junk input; Error
-	    (* IteratorExpCS *)
-	    (* OperationCallCS [B] *)
-      | Some Hat _ ->
-	  Stream.junk input; Error
-      | Some HatHat _ ->
-	  Stream.junk input; Error
-      | _ -> expr
+	    match vardecls with
+		[decl] ->
+		  let arg = parse_expression input in
+		    begin
+		      match Stream.peek input with
+			  Some RParen _ ->
+			    Stream.junk input;
+			    Iterate (expr, "iterate", [], Some decl, arg)
+			| Some t -> raise (BadToken ((get_token_name t),
+						     (get_token_line t), ")"))
+			| None -> assert false
+		    end
+	      | _ -> raise (BadToken ("|", line, ";"))
+	  end
+      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				   "; or |"))
+      | None -> assert false
 and parse_atomic_expression input =
   (* Parse atomic expressions. Here we need three tokens of lookahead,
      in order to recognize attribute calls marked pre.
@@ -1055,11 +1260,23 @@ and parse_atomic_expression input =
 	Stream.junk input;
 	let args = parse_arguments input in
 	  OperationCall(Self, name, false, args)
-    | [Id (name, _); LBrace _; _] ->
+    | [Id (name, _); LBracket _; _] ->
+	(* AssociationEndCallCS[B] or AssociationClassCallCS[B].
+
+	   Disambiguation will be performed by the type checker. *)
+
+	Stream.junk input; Stream.junk input;
+	let args = parse_qualifiers input in
+	let ismarkedpre = parse_pre_mark input in
+	  AssociationCall(Self, name, args, ismarkedpre)
+    | [Id ("Bag" | "OrderedSet" | "Sequence" | "Set" as n, _); LBrace _; _] ->
 	(* CollectionLiteralCS *)
 	Stream.junk input;
 	Stream.junk input;
-	parse_collection_literal name input
+	parse_collection_literal n input
+    | [Id ("Tuple" as name, _); LBrace _; _] ->
+	(* TupleLiteralCS *)
+	assert false;
     | [Id (_,_); DoubleColon _; _] ->
 	let name = parse_pathname input in
 	  begin
@@ -1075,13 +1292,12 @@ and parse_atomic_expression input =
 	  begin
 	    match Stream.peek input with
 		Some RParen _ -> Stream.junk input; e
-	      | Some Eof -> assert false
 	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), ")"))
 	      | None -> assert false
 	  end
     | (Keyword ("if", _))::_ -> parse_if_expression input
-    | Eof::_ -> assert false
-    | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t), ""))
+    | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t),
+			       "true, false, <<number>>, <<string>>, <<identifier>>, (, if"))
     | [] -> assert false
 and parse_collection_literal name input =
   (** Parse a collection literal.
@@ -1102,7 +1318,6 @@ and parse_collection_literal_parts input =
 	Some RBrace _ -> Stream.junk input; []
       | Some Comma _ -> Stream.junk input;
 	  e :: parse_collection_literal_parts input
-      | Some Eof -> assert false
       | Some t ->
 	  raise (BadToken ((get_token_name t), (get_token_line t), ", or }"))
       | None -> assert false
@@ -1134,15 +1349,12 @@ and parse_if_expression input =
 				    Some Keyword ("endif", _) ->
 				      Stream.junk input;
 				      If (c, t, f)
-				  | Some Eof -> assert false
 				  | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "endif"))
 				  | None -> assert false
 			      end
-			| Some Eof -> assert false
 			| Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "else"))
 			| None -> assert false
 		    end
-	      | Some Eof -> assert false
 	      | Some t -> raise (BadToken ((get_token_name t),
 					   (get_token_line t), "then"))
 	      | None -> assert false
@@ -1154,14 +1366,26 @@ and parse_arguments input =
       Some RParen _ -> Stream.junk input; []
     | _ ->
 	let args = parse_expression_list input in
-	begin
-	  match Stream.peek input with
-	      Some RParen _ -> Stream.junk input; args
-	    | Some Eof -> assert false
-	    | Some t -> raise (BadToken ((get_token_name t),
-					 (get_token_line t), ") or ,"))
-	    | None -> assert false
-	end
+	  begin
+	    match Stream.peek input with
+		Some RParen _ -> Stream.junk input; args
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), ") or ,"))
+	      | None -> assert false
+	  end
+and parse_qualifiers input =
+  (* Assume that the caller has consumed the opening parenthesis *)
+  match Stream.peek input with
+      Some RBracket _ -> Stream.junk input; []
+    | _ ->
+	let args = parse_expression_list input in
+	  begin
+	    match Stream.peek input with
+		Some RBracket _ -> Stream.junk input; args
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), "] or ,"))
+	      | None -> assert false
+	  end
 and parse_expression_list input =
   let expr = (parse_expression input) in
     match Stream.peek input with
@@ -1169,7 +1393,60 @@ and parse_expression_list input =
           Stream.junk input;
           expr:: (parse_expression_list input)
       | _ -> [expr]
-;;
+and parse_pre_mark input =
+  match Stream.peek input with
+      Some At _ ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some Keyword ("pre", _) -> Stream.junk input; true
+	    | Some t -> raise (BadToken ((get_token_name t),
+					 (get_token_line t), "pre"))
+	    | _ -> assert false
+	end
+    | _ -> false
+and parse_vardecls input =
+  match Stream.peek input with
+      Some Id (_, _) ->
+	let decl = parse_vardecl input in
+	  begin
+	    match Stream.peek input with
+		Some Comma _ ->
+		  Stream.junk input;
+		  let rest = parse_vardecls input in
+		    decl::rest
+	      | _ -> [decl]
+	  end
+    | _ -> []
+and parse_vardecl input =
+  match Stream.peek input with
+      Some Id (name, _) ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some Colon _ ->
+		Stream.junk input;
+		let t = parse_typespec input in
+		  begin
+		    match Stream.peek input with
+			Some Equals _ ->
+			  Stream.junk input;
+			  let i = parse_expression input in
+			    { varname = name; typespec = None; init = Some i }
+		      | _ -> { varname = name; typespec = Some t; init = None }
+		  end
+	    | Some Equals _ ->
+		Stream.junk input;
+		let i = parse_expression input in
+		  { varname = name; typespec = None; init = Some i }
+	    | _ -> { varname = name; typespec = None; init = None }
+	end
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
+				 "<<identifier>>"))
+    | None -> assert false
+
+
+
 
 
 (** A constraint. *)
@@ -1194,8 +1471,9 @@ let rec parse_constraints input : oclconstraint list =
 	let n = parse_constraint_name input in
 	  begin
 	    match Stream.peek input with
-		Some Keyword ("endpackage", _) | Some Eof ->
-		  (* endpackage will be consumed in parse_package_contexts! *)
+		Some Keyword ("endpackage", _) ->
+		  (* endpackage will be consumed in
+		     parse\_package\_contexts! *)
 		  [{ stereotype = s; constraintname = n;
 		     expression = Value (Boolean true) }]
 	      | Some Keyword (( "inv" | "pre" | "post" | "init" |
@@ -1213,13 +1491,11 @@ and parse_constraint_name input =
   match Stream.peek input with
       Some Id (n, _) -> Stream.junk input; parse_constraint_colon input; Some n
     | Some Colon _ -> parse_constraint_colon input; None
-    | Some Eof -> assert false
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "<<id>>, :"))
     | None -> assert false
 and parse_constraint_colon input =
   match Stream.peek input with
       Some Colon _ -> Stream.junk input
-    | Some Eof -> assert false
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), ":"))
     | None -> assert false
 
@@ -1272,22 +1548,20 @@ let parse_context input : oclcontext =
 	{ self = None; xxx = None; context = Error; typespec = None;
 	  constraints = [] }
 and parse_context_name input =
-    match Stream.peek input with
-        Some Id (_, line) ->
-          let name = parse_pathname input in
-            let constraints = parse_constraints input in
-              (None, None, name, None, constraints)
-      | Some Eof -> assert false
-      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "<<id>>"))
-      | None -> assert false
+  match Stream.peek input with
+      Some Id (_, line) ->
+        let name = parse_pathname input in
+        let constraints = parse_constraints input in
+          (None, None, name, None, constraints)
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "<<id>>"))
+    | None -> assert false
 and parse_constraints input =
-    match Stream.peek input with
-        Some Keyword ("inv" | "pre" | "post" | "init" | "def" | "deriv" as stereotype,
-		      line) ->
-          []
-      | Some Eof -> assert false
-      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "inv, pre, post, init, def, deriv"))
-      | None -> assert false
+  match Stream.peek input with
+      Some Keyword ("inv" | "pre" | "post" | "init" | "def" | "deriv" as stereotype,
+		    line) ->
+        []
+    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "inv, pre, post, init, def, deriv"))
+    | None -> assert false
 ;;
 
 
@@ -1319,7 +1593,6 @@ and parse_package_contexts input =
 	let context = parse_context input in
 	context :: parse_package_contexts input
     | Some Keyword ("endpackage", _) -> Stream.junk input; []
-    | Some Eof -> assert false
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				 "context, endpackage"))
     | None -> assert false
@@ -1343,10 +1616,9 @@ let rec parse_file input: oclpackage list =
         let context = parse_context input in
 	  { packagename = None; contextdecls = [context] } ::
 	    (parse_file input)
-    | Some Eof -> []
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				 "context, package"))
-    | None -> assert false
+    | None -> []
 
 
 

@@ -23,7 +23,26 @@
 
 open XmlReader;;
 
-let from_file x =
-  let reader = from_filename x
-  in ()
-  ;;
+let keep_temporary = ref true
+
+let stylesheet =
+  let name = "xmi2suml.xsl" in
+    if Sys.file_exists name
+    then name
+    else
+      let path =
+	try
+	  Sys.getenv "OCLVP_DATA"
+	with
+	    Not_found -> Version.oclvp_datadir
+      in
+	Filename.concat path name
+
+let from_file file =
+  let target = Filename.temp_file "oclvp" "suml" in
+    Xml.to_file
+      (Xslt.transform (Xslt.parse_stylesheet stylesheet) (Xml.from_file file))
+      target true;
+    let result = SUML.from_file target in
+      if not !keep_temporary then (Sys.remove target);
+      result

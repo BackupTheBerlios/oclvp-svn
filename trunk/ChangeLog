@@ -1,3 +1,38 @@
+2005-11-23  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* source/OCL.ml: Mark end of file by None instead of a token.
+	Parse collection property calls and association call expressions.
+	Simplify generating XML from trees. Restrict parsing of collection
+	literals to the valid collections.  Parse type-specifications,
+	variable declarations, collection calls, iterate expressions,
+	iterator expressions let expressions.
+
+	* source/OCL.mli: Added a node for association call expressions.
+	Correct abstract syntax of type declarations.
+
+	* source/Xslt.ml, source/xslt_stubs.c:  Added more bindings.
+
+	* source/Xml.ml:  New file for libxml2 bindings, containing the
+	DOM based functions.
+
+	* source/xmld_stubs.c: New file implementing the stubs for Xml.ml.
+
+	* source/xml_helpers.h:  Expose some more macros.
+
+	* source/XMI.ml: Implemented the old style parser using the OCaml
+	bindings.
+
+	* source/Makefile.am:  depend now depends on all source files and
+	Makefile.am.  As a side-effect, depend will be rebuild more
+	eagerly.  Updated generation of Version.ml.  Added xmld_stubs.c
+	and Xml.ml to libxml_stubs.a
+
+	* tests/testsuite.at: Added tests for parsing collection property
+	calls and association call expressions.  Made the test sets more
+	meaningful and harmonised names.  Added tests for parsing let
+	expressions, collection calls, iterate expressions and iterator
+	expressions.
+
 2005-11-18  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* data/xmi2suml.xsl:  Added the old style-sheet translating XMI

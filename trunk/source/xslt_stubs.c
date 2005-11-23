@@ -30,83 +30,119 @@
 #include <libxslt/xsltutils.h>
 #include <libxslt/extensions.h>
 
-CAMLprim value
-xml_transform(value stylesheet, value source, value target)
+
+#define XsltStylesheet_val(v) (*(xsltStylesheetPtr*) Data_custom_val(v))
+
+static void
+xslt_stylesheet_finalize(value v)
 {
-	CAMLparam3(stylesheet, source, target);
+        xsltFreeStylesheet(XsltStylesheet_val(v));
+}
+
+
+
+
+
+static struct custom_operations xslt_stylesheet_custom_operations = {
+        .identifier = "de.berlios.oclvp.xsltstylesheet.1",
+        .finalize = xslt_stylesheet_finalize,
+        .compare = custom_compare_default,
+        .hash = custom_hash_default,
+        .serialize = custom_serialize_default,
+        .deserialize = custom_deserialize_default
+};
+
+
+
+
+
+static value
+xslt_stylesheet_new(xsltStylesheetPtr arg)
+{
+        CAMLparam0();
+        CAMLlocal1(res);
+        res = caml_alloc_custom(&xslt_stylesheet_custom_operations, 4, 0, 1);
+        Field(res, 1) = (value) arg;
+        CAMLreturn(res);
+}
+
+
+
+
+static void
+xslt_transform_ctxt_finalize(value v)
+{
+        xsltFreeTransformContext(XsltTransformCtxt_val(v));
+}
+
+
+
+
+
+static struct custom_operations xslt_transform_ctxt_custom_operations = {
+        .identifier = "de.berlios.oclvp.xslttransformcontext.1",
+        .finalize = xslt_transform_ctxt_finalize,
+        .compare = custom_compare_default,
+        .hash = custom_hash_default,
+        .serialize = custom_serialize_default,
+        .deserialize = custom_deserialize_default
+};
+
+
+
+
+
+static value
+xslt_transform_ctxt_new(xsltTransformContextPtr arg)
+{
+        CAMLparam0();
+        CAMLlocal1(res);
+        res = caml_alloc_custom(&xslt_transform_ctxt_custom_operations, 4, 0,
+				1);
+        Field(res, 1) = (value) arg;
+        CAMLreturn(res);
+}
+
+
+
+CAMLprim value
+xslt_parse_stylesheet_doc(value doc)
+{
+	CAMLparam1(doc);
 	xsltStylesheetPtr style;
-	xmlDocPtr xstyle, doc, result;
-	xsltTransformContextPtr ctxt;
 
-	xmlLineNumbersDefault(0);
-	xmlKeepBlanksDefault(0);
-	xmlSubstituteEntitiesDefault(1);
-	xmlLoadExtDtdDefaultValue = 0;
-
-	xsltRegisterTestModule();
-
-	xmlDefaultSAXHandlerInit();
-	xmlDefaultSAXHandler.cdataBlock = NULL;
-
-	/* Load the style sheet */
-
-	xstyle = xmlParseFile(String_val(stylesheet));
-	if (xstyle == NULL) {
-		caml_failwith("xmlParseFile(stylesheet)");
-	}
-
-	style = xsltParseStylesheetDoc(xstyle);
+	style = xsltParseStylesheetDoc(XmlDoc_val(doc));
 	if (style == NULL || style->errors != 0) {
 		if (style != NULL)
 			xsltFreeStylesheet(style);
-		else
-			xmlFreeDoc(xstyle);
 		caml_failwith("xsltParseStylesheetDoc");
 	}
+	CAMLreturn (xslt_stylesheet_new(style));
+}
 
-	/* Load the document. */
-	doc = xmlParseFile(String_val(source));
-	if (doc == NULL) {
-		xsltFreeStylesheet(style);
-		caml_failwith("xmlParseFile(source)");
-	}
 
-	ctxt = xsltNewTransformContext(style, doc);
+
+CAMLprim value
+xslt_transform(value stylesheet, value doc, value target)
+{
+	CAMLparam3(stylesheet, doc, target);
+	xsltTransformContextPtr ctxt;
+	xmlDocPtr result;
+
+	ctxt = xsltNewTransformContext(XsltStylesheet_val(stylesheet),
+				       XmlDoc_val(doc));
 	if (ctxt == NULL) {
-		xsltFreeStylesheet(style);
-		xmlFreeDoc(doc);
 		caml_failwith("xmlNewTransformContext");
 	}
-	result = xsltApplyStylesheetUser(style, doc, NULL, NULL, NULL, ctxt);
-	xmlFreeDoc(doc);
+	result = xsltApplyStylesheetUser(XsltStylesheet_val(stylesheet),
+					 XmlDoc_val(doc),
+					 NULL, NULL, NULL, ctxt);
 	if (ctxt->state == XSLT_STATE_ERROR) {
-		xsltFreeTransformContext(ctxt);
-		xsltFreeStylesheet(style);
-		if (result != NULL)
-			xmlFreeDoc(result);
 		caml_failwith("Transformation had errors");
 	} else if (ctxt->state == XSLT_STATE_STOPPED) {
-		xsltFreeTransformContext(ctxt);
-		xsltFreeStylesheet(style);
-		if (result != NULL)
-			xmlFreeDoc(result);
 		caml_failwith("Transformation stopped.");
-	} else if (result->URL == NULL ) {
-		result->URL = xmlStrdup(doc->URL);
+	} else if (XmlDoc_val(result)->URL == NULL ) {
+		XmlDoc_val(result)->URL = xmlStrdup(XmlDoc_val(doc)->URL);
 	}
-	xsltFreeTransformContext(ctxt);
-	xsltFreeStylesheet(style);
-
-	/* Save the document */
-	do {
-		int old = xmlIndentTreeOutput;
-
-		xmlIndentTreeOutput = 1;
-		xmlSaveFormatFile(String_val(target), result, 1);
-		xmlIndentTreeOutput = old;
-	} while (0);
-
-	xmlFreeDoc(result);
-
-	CAMLreturn(Val_unit);
+	CAMLreturn(xml_doc_new(result));
 }

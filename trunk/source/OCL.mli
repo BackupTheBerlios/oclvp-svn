@@ -41,14 +41,16 @@ type
     | Range of oclast * oclast
     | If of oclast * oclast * oclast
     | AttributeCall of oclast * string * bool
+    | AssociationCall of oclast * string * oclast list * bool
     | OperationCall of oclast * string * bool * oclast list
     | CollectionCall of oclast * string * oclast list
-    | Iterate of oclast * string * oclvardecl list * oclvardecl * oclast
-    | Let of (string * oclast) list * oclast
+    | Iterate of oclast * string * oclvardecl list * oclvardecl option * oclast
+    | Let of oclvardecl list * oclast
     | Self
     | Error
   and
-    oclvardecl = { name: string; typespec: ocltypespec; init: oclast option }
+    oclvardecl = { varname: string; typespec: ocltypespec option;
+		   init: oclast option }
 
 
 

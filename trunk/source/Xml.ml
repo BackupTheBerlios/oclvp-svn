@@ -1,5 +1,5 @@
-/*
- * xml_helpers.c -- Helper functions for the OCaml XML bindings.
+(*
+ * Xml.ml -- OCaml bindings for libxml2.
  *
  * This file is part of oclvp
  *
@@ -19,27 +19,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
- */
+ *)
 
-#ifndef INCLUDED_XML_HELPERS_H
-#define INCLUDED_XML_HELPERS_H
+type doc
 
-#include <caml/mlvalues.h>
-#include <caml/memory.h>
-#include <caml/alloc.h>
-#include <caml/fail.h>
-#include <caml/custom.h>
+external from_file: string -> doc = "xml_doc_from_file"
+(** Parse an XML document from a file.
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+    @param filename The name of the source file. *)
 
-char * xml_string_option(value opt);
-
-#define XmlDoc_val(v) (*(xmlDocPtr*) Data_custom_val(v))
-
-value xml_doc_new(xmlDocPtr doc);
-
-#define XsltTransformCtxt_val(v) \
-	(*(xsltTransformContextPtr*) Data_custom_val(v))
-
-#endif
+external to_file: doc -> string -> bool -> unit = "xml_doc_to_file"

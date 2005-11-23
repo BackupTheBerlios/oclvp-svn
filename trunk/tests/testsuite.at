@@ -3,7 +3,7 @@ dnl
 AT_INIT([oclvp])
 AT_TESTED(oclvp)
 
-AT_SETUP([ocl-parser])
+AT_SETUP([ocl-parse-file])
 AT_DATA([empty.ocl], [[
 ]])
 AT_DATA([comment.ocl], [[-- This is a comment.
@@ -14,25 +14,25 @@ AT_DATA([emptycontext.ocl], [[context test inv:
 AT_CHECK([oclvp empty.ocl], [0], [], [])
 AT_CHECK([oclvp -oclexp ''], [0], [], [])
 AT_CHECK([oclvp comment.ocl], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-context])
 AT_CHECK([oclvp -oclexp 'context test inv:'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: inv:'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: true'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: (true)'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: true inv: true'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test1 inv: true context test2 inv: true'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-package])
 AT_CHECK([oclvp -oclexp 'package test endpackage'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'package test context test1 inv: endpackage'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'package test context test2 inv: true endpackage'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'package test context test1 inv: true context test2 inv: false endpackage'], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([ocl-if-parser])
-AT_DATA([if.ocl], [[context test inv: if true then true else true endif
-]])
-AT_CHECK([oclvp if.ocl], [0], [], [])
-AT_CLEANUP
-
-AT_SETUP([ocl-literal-parser])
+AT_SETUP([ocl-parse-literal])
 AT_CHECK([oclvp -oclexp 'context test inv: true'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: 1'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: 1.0'], [0], [], [])
@@ -44,20 +44,34 @@ AT_CHECK([oclvp -oclexp 'context test inv: Set{0,1..3}'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: Set{1..3,4}'], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([ocl-unary-parser])
+AT_SETUP([ocl-parse-if])
+AT_DATA([if.ocl], [[context test inv: if true then true else true endif
+]])
+AT_CHECK([oclvp if.ocl], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-let])
+AT_CHECK([oclvp -oclexp 'context test inv: let a = 1 in a'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: let a = 1, b = 1 in a + b'],
+	 [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: let a = 1 in let b = 2 in a + b'],
+	 [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-unary])
 AT_CHECK([oclvp -oclexp 'context test inv: not true'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: not not true'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: -1'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: - -1'], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([ocl-binary-parser])
+AT_SETUP([ocl-parse-binary])
 AT_CHECK([oclvp -oclexp 'context test inv: 1 + 1 and 2'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: - 1 and 2'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: 1 = 2'], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([ocl-attribute-parser])
+AT_SETUP([ocl-parse-attributecall])
 AT_CHECK([oclvp -oclexp 'context test inv: a'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: a@pre'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: a.a'], [0], [], [])
@@ -67,7 +81,7 @@ AT_CHECK([oclvp -oclexp 'context test inv: a@pre.a@pre'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: a.a.a@pre'], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([ocl-operation-parser])
+AT_SETUP([ocl-parse-operationcall])
 AT_CHECK([oclvp -oclexp 'context test inv: a()'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: a(1)'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: a(1, 1+2*3)'], [0], [], [])
@@ -77,4 +91,39 @@ AT_CHECK([oclvp -oclexp 'context test inv: b.a()'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: b.a().c'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: b.a().c()'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: b@pre.a@pre().c@pre()'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-associationcall])
+AT_CHECK([[oclvp -oclexp 'context test inv: z.a[]']], [0], [], [])
+AT_CHECK([[oclvp -oclexp 'context test inv: z.a[b, 1 + 2]']], [0], [], [])
+AT_CHECK([[oclvp -oclexp 'context test inv: z.a[a]@pre']], [0], [], [])
+AT_CHECK([[oclvp -oclexp 'context test inv: a[]']], [0], [], [])
+AT_CHECK([[oclvp -oclexp 'context test inv: a[b, 1 + 2]']], [0], [], [])
+AT_CHECK([[oclvp -oclexp 'context test inv: a[a]@pre']], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-collectioncall])
+AT_CHECK([oclvp -oclexp 'context test inv: self->a()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: self->a(1)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: self->a(1, 1+2*3)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: b->a()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: b->a(a, b, c = d, e)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: b->a(a, b, c = d)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: b->a()->c()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: b->a().c()'], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-iterator])
+AT_CHECK([oclvp -oclexp 'context test inv: self->a()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: self->forAll(a, b | a = b)'],
+	 [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: self->forAll(a: Integer | a = b)'],
+	 [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-iterate])
+AT_CHECK([oclvp -oclexp 'context test inv: self->iterate(a: Integer = 0 | a)'],
+	 [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: self->iterate(a; x = 1 | x + a)'],
+	 [0], [], [])
 AT_CLEANUP
