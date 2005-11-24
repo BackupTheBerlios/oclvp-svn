@@ -102,9 +102,11 @@ and typespec_list_to_xml writer l =
 
     This abstract syntax is not derived from ptc/05-06-06.  It follows
     more standard ideas. *)
-type
-    oclast =
-      Value of value
+type oclast =
+    | BooleanLiteral of bool
+    | IntegerLiteral of int
+    | StringLiteral of string
+    | RealLiteral of float
     | Identifier of string
     | Pathname of string list
     | Collection of string * oclast list
@@ -115,6 +117,9 @@ type
     | OperationCall of oclast * string * bool * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl option * oclast
+    | MessageExpr of oclast * string * oclast list
+    | MessageSequenceExpr of oclast * string * oclast list
+    | Wildcard of ocltypespec option
     | Let of oclvardecl list * oclast
     | Self
     | Error
@@ -138,7 +143,11 @@ let rec prettyprint_pathname path =
 (** Print a tree. *)
 let rec prettyprint tree =
   match tree with
-      Value v -> ""
+      BooleanLiteral true -> "true"
+    | BooleanLiteral false -> "false"
+    | IntegerLiteral i -> string_of_int i
+    | RealLiteral r -> string_of_float r
+    | StringLiteral s -> "'" ^ s ^ "'"
     | Identifier i -> i
     | Pathname path -> (prettyprint_pathname path)
     | Collection (s, l) -> s ^ "{" ^ (prettyprint_args l) ^ "}"
@@ -155,6 +164,12 @@ let rec prettyprint tree =
 	(prettyprint s) ^ "->" ^ m ^ "(" ^ (prettyprint_args a) ^ ")"
     | Iterate (c, n, v, ac, arg) ->
 	(prettyprint c) ^ "->" ^ n
+    | MessageExpr (r, n, a) ->
+	(prettyprint r) ^ "^" ^ n ^ "(" ^ (prettyprint_args a) ^ ")"
+    | MessageSequenceExpr (r, n, a) ->
+	(prettyprint r) ^ "^^" ^ n ^ "(" ^ (prettyprint_args a) ^ ")"
+    | Wildcard None -> "?"
+    | Wildcard Some t -> "?: " ^ (prettyprint_typespec t)
     | Let (v, i) -> "let " ^ (prettyprint_decls v) ^ " in " ^ (prettyprint i)
     | Self -> "self"
     | Error -> assert false
@@ -186,8 +201,21 @@ and prettyprint_decl d =
 (** Print a tree. *)
 let rec expression_to_xml writer expr =
   match expr with
-      Value v ->
-	start_element writer "value";
+    | BooleanLiteral b ->
+	start_element writer "booleanliteral";
+	write_attribute writer "value" (string_of_bool b);
+	end_element writer
+    | IntegerLiteral i ->
+	start_element writer "integerliteral";
+	write_attribute writer "value" (string_of_int i);
+	end_element writer
+    | RealLiteral i ->
+	start_element writer "realliteral";
+	write_attribute writer "value" (string_of_float i);
+	end_element writer
+    | StringLiteral s ->
+	start_element writer "realliteral";
+	write_attribute writer "value" s;
 	end_element writer
     | Identifier i ->
 	start_element writer "identifier";
@@ -273,6 +301,15 @@ let rec expression_to_xml writer expr =
 	expression_to_xml writer c;
 	end_element writer;
 	end_element writer;
+    | MessageExpr (r, n, a) -> assert false
+    | MessageSequenceExpr (r, n, a) -> assert false
+    | Wildcard None ->
+	start_element writer "wildcard";
+	end_element writer;
+    | Wildcard Some t ->
+	start_element writer "wildcard";
+	typespec_to_xml writer t;
+	end_element writer;
     | Let (v, i) ->
 	start_element writer "let";
 	start_element writer "definitions";
@@ -308,21 +345,10 @@ and vardecl_to_xml writer decl =
     class in the class diagram or a data type name.  *)
 let rec ocltypechecker cd env (expression: oclast) =
   match expression with
-    Value Null -> Name "OclAny"
-  | Value Reference r -> TypeError
-  | Value Boolean b -> Name "Boolean"
-  | Value Integer i -> Name "Integer"
-  | Value Real f -> Name "Real"
-  | Value String s -> Name "String"
-  | Value Bag b ->
-      Application ("Bag", Union (List.map (ocltypechecker cd env)
-				   (List.map (function x -> Value x) b)))
-  | Value Sequence b ->
-      Application ("Sequence", Union (List.map (ocltypechecker cd env)
-					(List.map (function x -> Value x) b)))
-  | Value Set b ->
-      Application ("Set", Union (List.map (ocltypechecker cd env)
-				   (List.map (function x -> Value x) b)))
+  | BooleanLiteral b -> Name "Boolean"
+  | IntegerLiteral i -> Name "Integer"
+  | RealLiteral f -> Name "Real"
+  | StringLiteral s -> Name "String"
   | Identifier i -> env i
   | Collection (n, e) ->
       Application (n, Union (List.map (ocltypechecker cd env) e))
@@ -390,62 +416,30 @@ let rec ocltypechecker cd env (expression: oclast) =
     @return     A reduced expression representing the semantic value.
                 The value may be Error, which means, that the constraint
                 was probably not well-typed.  *)
-let rec oclinterpreter cd cs ps env expr =
-  match expr with
-      Value v -> Value v
-    | Identifier i -> env i
-    | Collection (n, v) ->
-	Collection (n, List.map (oclinterpreter cd cs ps env) v)
-    | If (c, e, f) ->
-	(match oclinterpreter cd cs ps env c with
-             Value Boolean true -> oclinterpreter cd cs ps env e
-           | Value Boolean false -> oclinterpreter cd cs ps env f
-           | _ -> Error)
-    | AttributeCall (c, n, _) ->
-	( match oclinterpreter cd cs ps env c with
-              Value Reference r ->
-		Value (Hashtbl.find (List.nth cs.objects r).attributes n)
-            | _ -> Error)
-    | OperationCall (c, n, p, args) ->
-	let vc = oclinterpreter cd cs ps env c
-	and va = List.map (oclinterpreter cd cs ps env) args
-	in (match vc with
-		Value Boolean b -> Error
-              | Value Integer i -> Error
-              | Value Real r -> Error
-              | Value String s -> Error
-              | Collection (n, v) -> Error
-              | _ -> Error)
-    | CollectionCall (c, n, args) ->
-	let va = List.map (oclinterpreter cd cs ps env) args
-	in (match oclinterpreter cd cs ps env c with
-		Collection ("Bag", values) -> Error
-              | Collection ("Sequence", values) -> Error
-              | Collection ("Set", values) -> Error
-              | v -> oclinterpreter cd cs ps env
-                  (CollectionCall (Collection ("Set", [v]), n, va)))
-    | _ -> Error
-;;
+let rec oclinterpreter cd cs ps env expr = ()
 
 
 
 
 
-(* Implementation of OCL parsers.
+(*s Implementation of an OCL parser *)
 
-   We do not use a table driven parser, because we need actually
-   two parsers, but a table driven parser (as generated by ocamlyacc)
-   only offers one entry point.
+(* The parser implemented here is a recursive descent parser.  Most of
+   OCL is in LL(1), with some expressions being LL(2) parseable, and
+   with iterate expressions requiring some generalised parsing
+   mechanism.
 
-   Also, a stream based parser is a bit more tricky, because the
-   grammar of OCL is in LL(2), so we need to be able to carry two
-   tokens of look-ahead for parsing. *)
+   Building a table-driven parser for OCL is a difficult exercise;
+   tools like yacc and ocamlyacc require major reworking of the
+   grammar to obtain satisfying results.
 
-(** This provides the lexer context.
+   The tree returned by our parser is not necessarily correct.  The type
+   checker will rewrite the abstract syntax tree generated by the parser
+   and return a corrected and type-annotated syntax tree.  *)
 
-    We only store the line, perhaps more will follow?  *)
-
-(** Enumerate the tokens used by the parser. *)
+(** The tokens returned by the lexer.  If the token has a semantic
+    value, then it is the first component of the constructor.  The last
+    one, an integer, refers to the line number of the token. *)
 type ocltoken =
     Keyword of string * int
   | Id of string * int
@@ -489,101 +483,92 @@ type ocltoken =
   | RBrace of int
   | Tilde of int
 
-let get_token_line token =
-  match token with
-  | Keyword (_, line) -> line
-  | Id (_, line) -> line
-  | Int (_, line) -> line
-  | Float (_, line) -> line
-  | Str (_, line) -> line
-  | Bang line -> line
-  | Quote line -> line
-  | Hash line -> line
-  | Dollar line -> line
-  | Percent line -> line
-  | Ampersand line -> line
-  | LParen line -> line
-  | RParen line -> line
-  | Mult line -> line
-  | Plus line -> line
-  | Comma line -> line
-  | Minus line -> line
-  | Arrow line -> line
-  | Dot line -> line
-  | DotDot line -> line
-  | Div line -> line
-  | Colon line -> line
-  | DoubleColon line -> line
-  | Assign line -> line
-  | Semicolon line -> line
-  | Less line -> line
-  | LessEq line -> line
-  | NotEq line -> line
-  | Equals line -> line
-  | Greater line -> line
-  | GreaterEq line -> line
-  | Question line -> line
-  | At line -> line
-  | LBracket line -> line
-  | RBracket line -> line
-  | Hat line -> line
-  | HatHat line -> line
-  | LBrace line -> line
-  | Bar line -> line
-  | RBrace line -> line
-  | Tilde line -> line
 
-let get_token_name token =
-  match token with
-  | Keyword (name, _) -> "<<keyword: " ^ name ^ ">>"
-  | Id (name, _) -> "<<identifier: " ^ name ^ ">>"
-  | Int (i, _) -> "<<integer: " ^ (string_of_int i) ^ ">>"
-  | Float (f, _) -> "<<real: " ^ (string_of_float f) ^ ">>"
-  | Str (s, _) -> "<<string: '" ^ s ^ "'>>"
-  | Bang _ -> "!"
-  | Quote _ -> "\""
-  | Hash _ -> "#"
-  | Dollar _ -> "$"
-  | Percent _ -> "%"
-  | Ampersand _ -> "&"
-  | LParen _ -> "("
-  | RParen _ -> ")"
-  | Mult _ -> "*"
-  | Plus _ -> "+"
-  | Comma _ -> ","
-  | Minus _ -> "-"
-  | Arrow _ -> "->"
-  | Dot _ -> "."
-  | DotDot _ -> ".."
-  | Div _ -> "/"
-  | Colon _ -> ":"
-  | DoubleColon _ -> "::"
-  | Assign _ -> ":="
-  | Semicolon _ -> ";"
-  | Less _ -> "<"
-  | LessEq _ -> "<="
-  | NotEq _ -> "<>"
-  | Equals _ -> "="
-  | Greater _ -> ">"
-  | GreaterEq _ -> ">="
-  | Question _ -> "?"
-  | At _ -> "@"
-  | LBracket _ -> "["
-  | RBracket _ -> "]"
-  | Hat _ -> "^"
-  | HatHat _ -> "^^"
-  | LBrace _ -> "{"
-  | Bar _ -> "|"
-  | RBrace _ -> "}"
-  | Tilde _ -> "~"
-  
+
+
+
+(** Extract the line of a token. *)
+let get_token_line =
+  function
+      Keyword (_, line) | Id (_, line) | Int (_, line) | Float (_, line)
+    | Str (_, line) | Bang line | Quote line | Hash line | Dollar line
+    | Percent line | Ampersand line | LParen line | RParen line | Mult line
+    | Plus line | Comma line | Minus line | Arrow line | Dot line
+    | DotDot line | Div line | Colon line | DoubleColon line | Assign line
+    | Semicolon line | Less line | LessEq line | NotEq line | Equals line
+    | Greater line | GreaterEq line | Question line | At line | LBracket line
+    | RBracket line | Hat line | HatHat line | LBrace line | Bar line
+    | RBrace line | Tilde line -> line
+
+
+
+
+
+(** Return a string representing the kind of the token and its
+    semantic value if applicable. *)
+let get_token_name =
+  function
+      Keyword (name, _) -> "<<keyword: " ^ name ^ ">>"
+    | Id (name, _) -> "<<identifier: " ^ name ^ ">>"
+    | Int (i, _) -> "<<integer: " ^ (string_of_int i) ^ ">>"
+    | Float (f, _) -> "<<real: " ^ (string_of_float f) ^ ">>"
+    | Str (s, _) -> "<<string: '" ^ s ^ "'>>"
+    | Bang _ -> "!"
+    | Quote _ -> "\""
+    | Hash _ -> "#"
+    | Dollar _ -> "$"
+    | Percent _ -> "%"
+    | Ampersand _ -> "&"
+    | LParen _ -> "("
+    | RParen _ -> ")"
+    | Mult _ -> "*"
+    | Plus _ -> "+"
+    | Comma _ -> ","
+    | Minus _ -> "-"
+    | Arrow _ -> "->"
+    | Dot _ -> "."
+    | DotDot _ -> ".."
+    | Div _ -> "/"
+    | Colon _ -> ":"
+    | DoubleColon _ -> "::"
+    | Assign _ -> ":="
+    | Semicolon _ -> ";"
+    | Less _ -> "<"
+    | LessEq _ -> "<="
+    | NotEq _ -> "<>"
+    | Equals _ -> "="
+    | Greater _ -> ">"
+    | GreaterEq _ -> ">="
+    | Question _ -> "?"
+    | At _ -> "@"
+    | LBracket _ -> "["
+    | RBracket _ -> "]"
+    | Hat _ -> "^"
+    | HatHat _ -> "^^"
+    | LBrace _ -> "{"
+    | Bar _ -> "|"
+    | RBrace _ -> "}"
+    | Tilde _ -> "~"
+
+
+
+
+(** Exception raised when the lexer or parser encounters the end of
+    a file in an unexprected place.  The string argument described the
+    place where the end of file has been encountered. *)
+exception Eof of string
+
+
+
 
 
 
 (** Create a lexer for OCL.
 
-    The lexer will turn a stream of characters (as obtained from a string or
-    file) into a stream of tokens. *)
+    The lexer turns a stream of characters (as obtained from a string or
+    file) into a stream of tokens.
+
+    The tokenizer filters out all comments.  *)
 let lexer input =
   let line = ref 0 in
   let initial_buffer = String.create 256 in
@@ -735,10 +720,10 @@ let lexer input =
 	    Stream.junk stream;
 	    store c;
 	    parse_number stream
-	| ['.'; '.'] ->
-            Some(Int (int_of_string (get_string ()), !line))
-	| '.'::_ ->
+	| ['.'; '0'..'9' | 'e' | 'E' ] ->
             Stream.junk stream; store '.'; parse_decimal_part stream
+	| ['.'; _ ] ->
+            Some(Int (int_of_string (get_string ()), !line))
 	| ('e' | 'E')::_ ->
 	    Stream.junk stream;
 	    store 'e';
@@ -779,19 +764,18 @@ let lexer input =
 	| _ -> raise Stream.Failure
     in
       Stream.from (fun count -> next_token input)
-;;
 
 
 
 
 
-(** This exception is raised if a token has been encountered which we
-    do not expect. The first argument to the constructor refers to the
-    bad token, the second to the line in which it has been found, and the
-    third may be used for some explenation. *)
+(** This exception is raised if a token has been encountered which the
+    parser does not expect. The first argument to the constructor
+    refers to the unexpected token, the second to the line in which it
+    has been found, and the third may be used for some explenation.
+    This explenation is usually the follow-set, that is, the set of
+    tokens expected instead. *)
 exception BadToken of string * int * string
-
-exception ParseError of int
 
 
 
@@ -801,23 +785,23 @@ exception ParseError of int
     its name as an Identifier tree *)
 let parse_identifier_or_operator input =
   match Stream.peek input with
-      Some Id (id, _) -> Identifier id
-    | Some Mult _ -> Identifier "*"
-    | Some Plus _ -> Identifier "+"
-    | Some Minus _ -> Identifier "-"
-    | Some Div _ -> Identifier "/"
-    | Some Less _ -> Identifier "<"
-    | Some LessEq _ -> Identifier "<="
-    | Some NotEq _ -> Identifier "<>"
-    | Some Equals _ -> Identifier "="
-    | Some Greater _ -> Identifier ">"
-    | Some GreaterEq _ -> Identifier ">="
+      Some Id (id, _) -> Stream.junk input; id
+    | Some Mult _ -> Stream.junk input; "*"
+    | Some Plus _ -> Stream.junk input; "+"
+    | Some Minus _ -> Stream.junk input; "-"
+    | Some Div _ -> Stream.junk input; "/"
+    | Some Less _ -> Stream.junk input; "<"
+    | Some LessEq _ -> Stream.junk input; "<="
+    | Some NotEq _ -> Stream.junk input; "<>"
+    | Some Equals _ -> Stream.junk input; "="
+    | Some Greater _ -> Stream.junk input; ">"
+    | Some GreaterEq _ -> Stream.junk input; ">="
     | Some t -> raise (BadToken (get_token_name t, get_token_line t,
-				 "<<id>>, *, +, -, /, <. <=, <>, =, >, >="))
-    | None -> assert false
+				 "<<identifier>>, *, +, -, /, <. <=, <>, =, >, >="))
+    | None ->
+	raise (Eof "exprecting <<identifier>>, *, +, -, /, <. <=, <>, =, >, >=")
 
 (** Parse a path name from the input stream. *)
-
 let rec parse_pathname input =
   Pathname (parse_pathname_identifier input [])
 and parse_pathname_identifier input path =
@@ -836,6 +820,7 @@ and parse_pathname_double_colon input path =
 
 
 
+(** Parse a type specification. *)
 let rec parse_typespec input =
   match Stream.peek input with
       Some Id (name, _) ->
@@ -850,13 +835,13 @@ let rec parse_typespec input =
 			Some RParen _ -> Application (name, arg)
 		      | Some t -> raise  (BadToken ((get_token_name t),
 						    (get_token_line t), ")"))
-		      | None -> assert false
+		      | None -> raise (Eof "in type specification")
 		  end
 	    | _ -> Name name
 	end
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				 "<<identifier>>"))
-    | None -> assert false
+    | None -> raise (Eof "in type specification")
 
 
 
@@ -881,8 +866,11 @@ let rec parse_expression input =
   match Stream.peek input with
       Some Keyword ("let", _) -> Stream.junk input; parse_let_expression input
     | Some _ -> parse_binary_expression input
-    | None -> Error
+    | None -> raise (Eof "while parsing expression")
 and parse_let_expression input =
+  (** Parse a let-expression.
+
+      The parser is very liberal here, as it also allows let a in x. *)
   let l = parse_vardecls input in
     begin
       match Stream.peek input with
@@ -891,7 +879,7 @@ and parse_let_expression input =
 	    let i = parse_expression input in Let (l, i)
 	| Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				     "in"))
-	| None -> assert false
+	| None -> raise (Eof "in let expression")
     end
 and parse_binary_expression input =
   (** Parse a binary expression, that is, a xor/iff expression.
@@ -1088,16 +1076,40 @@ and parse_postfix_expression expr input =
 			let res = parse_iterator_or_collectioncall input expr
 			  name [] in parse_postfix_expression res input
 		    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "("))
-		    | None -> assert false
+		    | None -> raise (Eof "while parsing collection call expression")
 		end
 	    | Some t -> raise (BadToken ((get_token_name t),
 					 (get_token_line t), "<<identifier>>"))
-	    | None -> assert false
+	    | None -> raise (Eof "while parsing collection call")
 	end
     | Some Hat _ ->
-	Stream.junk input; Error
+	Stream.junk input;
+	let name = parse_identifier_or_operator input in
+	  begin
+	    match Stream.peek input with
+		Some LParen _ ->
+		  Stream.junk input;
+		  let args = parse_message_expr_args input in
+		  let res = MessageExpr (expr, name, args) in
+		    parse_postfix_expression res input
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), "("))
+	      | None -> raise (Eof "while parsing message expression")
+	  end
     | Some HatHat _ ->
-	Stream.junk input; Error
+	Stream.junk input;
+	let name = parse_identifier_or_operator input in
+	  begin
+	    match Stream.peek input with
+		Some LParen _ ->
+		  Stream.junk input;
+		  let args = parse_message_expr_args input in
+		  let res = MessageSequenceExpr (expr, name, args) in
+		    parse_postfix_expression res input
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), "("))
+	      | None -> raise (Eof "while parsing message sequence expression")
+	  end
     | _ -> expr
 and parse_iterator_or_collectioncall input expr name (args: oclast list) =
   (* This function is used to parse an iterator expression or an operation
@@ -1168,11 +1180,11 @@ and parse_iterator_expression input expr name decls =
 		  Iterate (expr, name, decls, None, arg)
 	      | Some t -> raise (BadToken ((get_token_name t),
 					   (get_token_line t), ")"))
-	      | None -> assert false
+	      | None -> raise (Eof "in iterator expression")
 	  end
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				 "<<identifier>> or ; or |"))
-    | None -> assert false
+    | None -> raise (Eof "in iterator expression")
 and parse_collectioncall_expression input expr name (args: oclast list) =
   let remainder = parse_arguments input in
     CollectionCall (expr, name, args @ remainder)
@@ -1194,19 +1206,19 @@ and parse_iterate_expression input expr =
 		  Some Bar _ ->
 		    Stream.junk input;
 		    let arg = parse_expression input in
-		    begin
-		      match Stream.peek input with
-			  Some RParen _ ->
-			    Stream.junk input;
-			    Iterate (expr, "iterate", vardecls, Some decl, arg)
-			| Some t -> raise (BadToken ((get_token_name t),
-						     (get_token_line t), ")"))
-			| None -> assert false
-		    end
+		      begin
+			match Stream.peek input with
+			    Some RParen _ ->
+			      Stream.junk input;
+			      Iterate (expr, "iterate", vardecls, Some decl, arg)
+			  | Some t -> raise (BadToken ((get_token_name t),
+						       (get_token_line t), ")"))
+			  | None -> raise (Eof "in iterate expression")
+		      end
 		| Some t -> raise (BadToken ((get_token_name t),
 					     (get_token_line t),
 					     "|"))
-		| None -> assert false
+		| None -> raise (Eof "in iterate expression")
 	    end
       | Some Bar line ->
 	  Stream.junk input;
@@ -1221,13 +1233,13 @@ and parse_iterate_expression input expr =
 			    Iterate (expr, "iterate", [], Some decl, arg)
 			| Some t -> raise (BadToken ((get_token_name t),
 						     (get_token_line t), ")"))
-			| None -> assert false
+			| None -> raise (Eof "in iterate expression")
 		    end
 	      | _ -> raise (BadToken ("|", line, ";"))
 	  end
       | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				   "; or |"))
-      | None -> assert false
+      | None -> raise (Eof "in iterate expression")
 and parse_atomic_expression input =
   (* Parse atomic expressions. Here we need three tokens of lookahead,
      in order to recognize attribute calls marked pre.
@@ -1235,11 +1247,11 @@ and parse_atomic_expression input =
      Note that two tokens would be sufficient, since we only need to see
      the @. *)
   match Stream.npeek 3 input with
-      (Keyword ("true", _))::_ -> Stream.junk input; Value (Boolean true)
-    | (Keyword ("false", _))::_ -> Stream.junk input; Value (Boolean false)
-    | (Int (v, _))::_ -> Stream.junk input; Value (Integer v)
-    | (Float (v, _))::_ -> Stream.junk input; Value (Real v)
-    | (Str (v, _))::_ -> Stream.junk input; Value (String v)
+      (Keyword ("true", _))::_ -> Stream.junk input; BooleanLiteral true
+    | (Keyword ("false", _))::_ -> Stream.junk input; BooleanLiteral false
+    | (Int (v, _))::_ -> Stream.junk input; IntegerLiteral v
+    | (Float (v, _))::_ -> Stream.junk input; RealLiteral v
+    | (Str (v, _))::_ -> Stream.junk input; StringLiteral v
     | [Id (name, _); At _; Keyword ("pre", _)] ->
 	(* AttributeCallCS [B]: SimpleNameCS "@pre"
 	   or OperationCallCS [F] *)
@@ -1293,12 +1305,12 @@ and parse_atomic_expression input =
 	    match Stream.peek input with
 		Some RParen _ -> Stream.junk input; e
 	      | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), ")"))
-	      | None -> assert false
+	      | None -> raise (Eof "while parsing arguments")
 	  end
     | (Keyword ("if", _))::_ -> parse_if_expression input
     | t::_ -> raise (BadToken ((get_token_name t), (get_token_line t),
 			       "true, false, <<number>>, <<string>>, <<identifier>>, (, if"))
-    | [] -> assert false
+    | [] -> raise (Eof "while parsing arguments")
 and parse_collection_literal name input =
   (** Parse a collection literal.
 
@@ -1320,7 +1332,7 @@ and parse_collection_literal_parts input =
 	  e :: parse_collection_literal_parts input
       | Some t ->
 	  raise (BadToken ((get_token_name t), (get_token_line t), ", or }"))
-      | None -> assert false
+      | None -> raise (Eof "while parsing collection literal")
 and parse_collection_literal_part input =
   (** Parse the part of a collection literal.  This is either an expression
       or a range expression. *)
@@ -1350,14 +1362,16 @@ and parse_if_expression input =
 				      Stream.junk input;
 				      If (c, t, f)
 				  | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "endif"))
-				  | None -> assert false
+				  | None -> raise (Eof "while parsing else clause")
 			      end
-			| Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "else"))
-			| None -> assert false
+			| Some t -> raise (BadToken ((get_token_name t),
+						     (get_token_line t),
+						     "else"))
+			| None -> raise (Eof "while parsing then clause")
 		    end
 	      | Some t -> raise (BadToken ((get_token_name t),
 					   (get_token_line t), "then"))
-	      | None -> assert false
+	      | None -> raise (Eof "while parsing if-condition")
 	  end
     | _ -> assert false
 and parse_arguments input =
@@ -1371,8 +1385,58 @@ and parse_arguments input =
 		Some RParen _ -> Stream.junk input; args
 	      | Some t -> raise (BadToken ((get_token_name t),
 					   (get_token_line t), ") or ,"))
-	      | None -> assert false
+	      | None -> raise (Eof "while parsing arguments")
 	  end
+and parse_message_expr_args input =
+  match Stream.peek input with
+      Some RParen _ ->
+	Stream.junk input;
+	[]
+    | Some Question _ ->
+	Stream.junk input;
+	begin
+	  match Stream.peek input with
+	      Some Colon _ ->
+		Stream.junk input;
+		let ts = parse_typespec input in
+		  begin
+		    match Stream.peek input with
+			Some Comma _ ->
+			  Stream.junk input;
+			  (Wildcard (Some ts))::(parse_message_expr_args input)
+		      | Some RParen _ ->
+			  Stream.junk input;
+			  [Wildcard (Some ts)]
+		      | Some t -> raise (BadToken ((get_token_name t),
+						   (get_token_line t),
+						   ") or ,"))
+		      | None -> raise (Eof "while pasing arguments of message or message sequence expression")
+		  end
+	    | Some Comma _ ->
+		Stream.junk input;
+		(Wildcard None)::(parse_message_expr_args input)
+	    | Some RParen _ ->
+		Stream.junk input;
+		[Wildcard None]
+	    | Some t -> raise (BadToken ((get_token_name t),
+					 (get_token_line t), ": or , or )"))
+	    | None -> raise (Eof "while pasing arguments of message or message sequence expression")
+	end
+    | Some _ ->
+	let expr = parse_expression input in
+	  begin
+	    match Stream.peek input with
+		Some Comma _ ->
+		  Stream.junk input;
+		  expr::(parse_message_expr_args input)
+	      | Some RParen _ ->
+		  Stream.junk input;
+		  [expr]
+	      | Some t -> raise (BadToken ((get_token_name t),
+					   (get_token_line t), ") or ,"))
+	      | None -> raise (Eof "while pasing arguments of message or message sequence expression")
+	  end
+    | None -> raise (Eof "while pasing arguments of message or message sequence expression")
 and parse_qualifiers input =
   (* Assume that the caller has consumed the opening parenthesis *)
   match Stream.peek input with
@@ -1384,7 +1448,7 @@ and parse_qualifiers input =
 		Some RBracket _ -> Stream.junk input; args
 	      | Some t -> raise (BadToken ((get_token_name t),
 					   (get_token_line t), "] or ,"))
-	      | None -> assert false
+	      | None -> raise (Eof "while parsing qualifiers")
 	  end
 and parse_expression_list input =
   let expr = (parse_expression input) in
@@ -1443,7 +1507,7 @@ and parse_vardecl input =
 	end
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
 				 "<<identifier>>"))
-    | None -> assert false
+    | None -> raise (Eof "while parsing variable declaration")
 
 
 
@@ -1464,29 +1528,30 @@ type oclconstraint =
 
     Here we expect a list of the form [stereotype name?: expression]. *)
 
-let rec parse_constraints input : oclconstraint list =
+let rec parse_constraints input =
   match Stream.peek input with
       Some Keyword (( "inv" | "pre" | "post" | "init" | "derive" as s), _) ->
 	Stream.junk input;
 	let n = parse_constraint_name input in
 	  begin
 	    match Stream.peek input with
-		Some Keyword ("endpackage", _) ->
+		Some Keyword ("endpackage", _) | None ->
 		  (* endpackage will be consumed in
 		     parse\_package\_contexts! *)
 		  [{ stereotype = s; constraintname = n;
-		     expression = Value (Boolean true) }]
+		     expression = BooleanLiteral true }]
 	      | Some Keyword (( "inv" | "pre" | "post" | "init" |
-				    "derive" as s), _) ->
+				    "derive" | "body"), _) ->
 		  { stereotype = s; constraintname = n;
-		    expression = Value (Boolean true) } ::
+		    expression = BooleanLiteral true } ::
 		    parse_constraints input
-	      | _ ->
+	      | Some _ ->
 		  let e = parse_expression input in
 		    { stereotype = s; constraintname = n; expression = e } ::
 		      parse_constraints input
 	  end
-    | _ -> []
+    | Some _ -> []
+    | None -> []
 and parse_constraint_name input =
   match Stream.peek input with
       Some Id (n, _) -> Stream.junk input; parse_constraint_colon input; Some n
@@ -1513,7 +1578,7 @@ type oclcontext = { self: string option;
 
 
 
-let parse_context input : oclcontext =
+let parse_context input =
   match Stream.peek input with
       Some Keyword ("context", _) ->
         Stream.junk input;
@@ -1533,10 +1598,14 @@ let parse_context input : oclcontext =
 			  Stream.junk input; 
 			  { self = None; xxx = None; context = name;
 			    typespec = None; constraints = [] }
-		      | _ ->
+		      | Some _ ->
 			  { self = None; xxx = None; context = name;
 			    typespec = None;
 			    constraints = parse_constraints input }
+		      | None ->
+			  { self = None; xxx = None; context = name;
+			    typespec = None;
+			    constraints = [] }
 		  end
 	    | _ -> assert false
 	end
@@ -1555,14 +1624,6 @@ and parse_context_name input =
           (None, None, name, None, constraints)
     | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "<<id>>"))
     | None -> assert false
-and parse_constraints input =
-  match Stream.peek input with
-      Some Keyword ("inv" | "pre" | "post" | "init" | "def" | "deriv" as stereotype,
-		    line) ->
-        []
-    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t), "inv, pre, post, init, def, deriv"))
-    | None -> assert false
-;;
 
 
 
@@ -1653,42 +1714,7 @@ let from_file name = parse_file (lexer (Stream.of_channel (open_in name)))
 
 
 
-(** Write the contents of a compilation unit to XML. *)
-let rec unit_to_xml writer packages =
-  match packages with
-      [] -> ()
-    | [p] -> package_to_xml writer p
-    | p::r -> package_to_xml writer p; unit_to_xml writer r
-and package_to_xml writer package =
-    match package with
-	{ packagename = None; contextdecls = l } ->
-	  contextdecls_to_xml writer l
-      | { packagename = Some Pathname name; contextdecls = l } ->
-	  start_element writer "package";
-	  write_attribute writer "name" (prettyprint_pathname name);
-	  contextdecls_to_xml writer l;
-	  end_element writer;
-      | _ -> assert false
-and contextdecls_to_xml writer contextdecls =
-  match contextdecls with
-      [] -> ()
-    | [c] -> contextdecl_to_xml writer c
-    | c::r -> contextdecl_to_xml writer c; contextdecls_to_xml writer r
-and contextdecl_to_xml writer context =
-  start_element writer "context";
-  begin
-    match context.context with
-	Pathname n -> write_attribute writer "name" (prettyprint_pathname n)
-      | _ -> assert false
-  end;
-  constraints_to_xml writer context.constraints;
-  end_element writer
-and constraints_to_xml writer constraints =
-  match constraints with
-      [] -> ()
-    | [c] -> constraint_to_xml writer c
-    | c::r -> constraint_to_xml writer c; constraints_to_xml writer r
-and constraint_to_xml writer con =
+let constraint_to_xml writer con =
   start_element writer "constraint";
   write_attribute writer "stereotype" con.stereotype;
   begin
@@ -1697,4 +1723,46 @@ and constraint_to_xml writer con =
       | Some name -> write_attribute writer "name" name
   end;
   expression_to_xml writer con.expression;
-  end_element writer;
+  end_element writer
+
+
+
+
+
+let contextdecl_to_xml writer context =
+  start_element writer "context";
+  begin
+    match context.context with
+	Pathname n -> write_attribute writer "name" (prettyprint_pathname n)
+      | _ -> assert false
+  end;
+  List.iter (constraint_to_xml writer) context.constraints;
+  end_element writer
+
+
+
+
+
+let package_to_xml writer package =
+    match package with
+	{ packagename = None; contextdecls = l } ->
+	  List.iter (contextdecl_to_xml writer) l;
+      | { packagename = Some Pathname name; contextdecls = l } ->
+	  start_element writer "package";
+	  write_attribute writer "name" (prettyprint_pathname name);
+	  List.iter (contextdecl_to_xml writer) l;
+	  end_element writer;
+      | _ -> assert false
+
+
+
+
+
+(** Write the contents of a compilation unit to XML. *)
+let unit_to_xml writer packages =
+  start_document writer None None None;
+  start_element writer "oclvp";
+  write_attribute writer "version" Version.oclvp_version;
+  write_attribute writer "kind" "constraint unit";
+  List.iter (package_to_xml writer) packages;
+  end_document writer

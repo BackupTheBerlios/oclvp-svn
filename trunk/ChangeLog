@@ -1,3 +1,32 @@
+2005-11-24  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* source/OCL.ml: Corrected an error in the way float literals and
+	integer literals are lexed.  Raise Eof if we encounter an
+	end-of-file instead of aborting with assert false.  Cleaned up
+	some functions.  Removed the interpreter for now.  Handle literals
+	differently; they are decoupled from object diagrams now.  Updated
+	the pretty printer and the conversion to XML.  Parse message
+	expressions.  More error corrections.
+
+	* source/OCL.mli:  Updated the abstract syntax in the interface.
+	Export the exceptions.
+
+	* source/Driver.ml: Updated the functions used for parsing ocl
+	files.  Added an option that exports the parsed tree to XML for
+	debugging.
+
+	* source/Makefile.am: Don't build the PVS Back End for now.
+
+	* source/xmlw_stubs.c:  Added debugging output.
+
+	* source/XmlWriter.ml:  Export setting the debug flag.
+
+	* tests/testsuite.at:  Added tests for OCL message expressions and
+	a test case for the error in lexing integer literals and float
+	literals.
+
+	
+
 2005-11-23  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* source/OCL.ml: Mark end of file by None instead of a token.

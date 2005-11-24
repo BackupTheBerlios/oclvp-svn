@@ -23,6 +23,7 @@
 
 #include "xml_helpers.h"
 
+#include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
 
 
@@ -32,14 +33,47 @@
 /* Cast a custom block to a xmlTextWriter pointer. */
 #define XmlWriter_val(v) (*((xmlTextWriterPtr*)Data_custom_val(v)))
 
+#ifndef NDEBUG
+static int debug = 0;
+
+CAMLprim value
+xml_writer_set_debug(value val)
+{
+	CAMLparam1(val);
+	int _debug = Bool_val(val);
+
+	if (_debug || debug) {
+		fprintf(stderr, "Set debug to %d\n", _debug);
+		fflush(stderr);
+	}
+	debug = _debug;
+	CAMLreturn(Val_unit);
+}
+
+#else
+
+CAMLprim value
+xml_writer_set_debug(value val)
+{
+	CAMLparam1(val);
+	CAMLreturn(Val_unit);
+}
+
+#endif
+
 
 
 
 
 static void xml_writer_finalize(value v)
 {
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "Finalizing writer %p\n", XmlWriter_val(v));
+		fflush(stderr);
+	}
+#endif
 	xmlFreeTextWriter(XmlWriter_val(v));
-	/* XXX: This may fail, but we ignore this. */
 }
 
 
@@ -62,11 +96,11 @@ static struct custom_operations xmlw_custom_operations = {
 static value
 xml_writer_wrap(xmlTextWriterPtr writer)
 {
-	CAMLparam0();
-	CAMLlocal1(vwriter);
-	vwriter = caml_alloc_custom(&xmlw_custom_operations, 4, 0, 1);
-	Field(vwriter, 1) = (value)writer;
-	CAMLreturn(vwriter);
+	CAMLparam0 ();
+	CAMLlocal1 (result);
+	result = caml_alloc_custom(&xmlw_custom_operations, 4, 0, 1);
+	Field(result, 1) = (value) writer;
+	CAMLreturn (result);
 }
 
 
@@ -79,6 +113,15 @@ xml_writer_to_file(value baseuri, value compression)
 	CAMLparam2(baseuri, compression);
 	xmlTextWriterPtr writer;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr,
+			"Creating new text writer for file name %s with "
+			"compression %d\n", String_val(baseuri),
+			Int_val(compression));
+		fflush(stderr);
+	}
+#endif
 	writer = xmlNewTextWriterFilename(String_val(baseuri),
 				          Int_val(compression));
 	if (writer == NULL)
@@ -95,6 +138,12 @@ xml_writer_end_attribute(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End attribute\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndAttribute(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndAttribute");
@@ -110,6 +159,12 @@ xml_writer_end_cdata(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End CDATA\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndCDATA(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndCDATA");
@@ -126,6 +181,12 @@ xml_writer_end_comment(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End Comment\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndComment(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndComment");
@@ -142,6 +203,12 @@ xml_writer_end_dtd(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End DTD\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndDTD(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndDTD");
@@ -158,6 +225,12 @@ xml_writer_end_dtd_attlist(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End DTD attribute list\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndDTDAttlist(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndDTDAttlist");
@@ -174,6 +247,12 @@ xml_writer_end_dtd_element(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End DTD element\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndDTDElement(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndDTDElement");
@@ -190,6 +269,12 @@ xml_writer_end_dtd_entity(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End DTD entity\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndDTDEntity(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndDTDEntity");
@@ -206,9 +291,18 @@ xml_writer_end_document(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End Document\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndDocument(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndDocument");
+	ret = xmlTextWriterFlush(XmlWriter_val(writer));
+	if (ret == -1)
+		caml_failwith("xmlTextWriterFlush");
 	CAMLreturn(Val_unit);
 }
 
@@ -222,6 +316,12 @@ xml_writer_end_element(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End Element\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndElement(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndElement");
@@ -238,6 +338,12 @@ xml_writer_end_pi(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "End Processing Instruction\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterEndPI(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterEndPI");
@@ -254,6 +360,12 @@ xml_writer_flush(value writer)
 	CAMLparam1(writer);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "Flush writer\n");
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterFlush(XmlWriter_val(writer));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterFlush");
@@ -270,6 +382,12 @@ xml_writer_set_indent(value writer, value indent)
 	CAMLparam2(writer, indent);
 	int ret;
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "Set indent to %d\n", Bool_val(indent));
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterSetIndent(XmlWriter_val(writer),
 				     Bool_val(indent));
 	if (ret == -1)
@@ -287,6 +405,12 @@ xml_writer_start_attribute(value writer, value name)
 	int ret;
 	CAMLparam2(writer, name);
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "Start attribute %s\n", String_val(name));
+		fflush(stderr);
+	}
+#endif
 	ret = xmlTextWriterStartAttribute(XmlWriter_val(writer),
 					  BAD_CAST String_val(name));
 	if (ret == -1)

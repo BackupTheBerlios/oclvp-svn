@@ -21,6 +21,31 @@
  * 02111-1307, USA.
  *)
 
+
+
+
+
+(** Exception raised when the lexer or parser encounters the end of
+    a file in an unexprected place.  The string argument described the
+    place where the end of file has been encountered. *)
+exception Eof of string
+
+
+
+
+
+(** This exception is raised if a token has been encountered which the
+    parser does not expect. The first argument to the constructor
+    refers to the unexpected token, the second to the line in which it
+    has been found, and the third may be used for some explenation.
+    This explenation is usually the follow-set, that is, the set of
+    tokens expected instead. *)
+exception BadToken of string * int * string
+
+
+
+
+
 (** The type of abstract syntax tree nodes of type expressions. *)
 type
   ocltypespec =
@@ -32,9 +57,11 @@ type
   | Union of ocltypespec list (** A union type *)
   | Intersection of ocltypespec list (** An intersection type *)
 
-type
-    oclast =
-      Value of ObjectDiagram.value
+type oclast =
+    | BooleanLiteral of bool
+    | IntegerLiteral of int
+    | StringLiteral of string
+    | RealLiteral of float
     | Identifier of string
     | Pathname of string list
     | Collection of string * oclast list
@@ -45,6 +72,9 @@ type
     | OperationCall of oclast * string * bool * oclast list
     | CollectionCall of oclast * string * oclast list
     | Iterate of oclast * string * oclvardecl list * oclvardecl option * oclast
+    | MessageExpr of oclast * string * oclast list
+    | MessageSequenceExpr of oclast * string * oclast list
+    | Wildcard of ocltypespec option
     | Let of oclvardecl list * oclast
     | Self
     | Error

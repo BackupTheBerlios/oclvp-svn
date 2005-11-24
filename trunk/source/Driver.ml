@@ -23,6 +23,12 @@
 
 open Arg;;
 
+let dump_to_xml = ref false
+
+
+
+
+
 (** Show the name and the version of the program and exit. *)
 let show_version () =
   print_string (Version.oclvp_package ^ " " ^ Version.oclvp_version ^ "\n") ;
@@ -34,24 +40,48 @@ let show_version () =
 
 let ignore x = ()
 
+let ocl_from_file name =
+  let tree = OCL.from_file name in
+    if !dump_to_xml then
+      begin
+	print_endline "Here!";
+	OCL.unit_to_xml (XmlWriter.to_file "-" 0) tree
+      end
+    else
+      ()
+
+let ocl_from_string expr =
+  let tree = OCL.from_string expr in
+    if !dump_to_xml then
+      begin
+	let writer = XmlWriter.to_file "-" 0 in
+	  XmlWriter.set_indent writer true;
+	  OCL.unit_to_xml writer tree
+      end
+    else
+      ()
+
+
+
+
 let from_file name =
   let len = String.length name in
   match (String.sub name (len - 4) 4) with
-    ".ocl" -> ignore (OCL.from_file name)
+    ".ocl" -> ignore (ocl_from_file name)
   | "suml" -> ignore (SUML.from_file name)
   | ".xmi" -> ignore (XMI.from_file name)
   | _ -> assert false
   ;;
 
 let options = [
-  ("-ocl", String (function f -> ignore (OCL.from_file f)),
-   "file  Read an OCL file");
-  ("-oclexp", String (function s -> ignore (OCL.from_string s)),
+  ("-ocl", String ocl_from_file, "file  Read an OCL file");
+  ("-oclexp", String ocl_from_string,
    "string  Parse string as the contents of an OCL file.");
   ("-suml", String (function f -> ignore (SUML.from_file f)),
    "file  Read a Simplified UML file");
   ("-xmi", String (function f -> ignore (XMI.from_file f)),
    "file  Read an XMI file");
+  ("-dump", Set dump_to_xml, "  Write the tree to XML after parsing");
   ("-v", Unit (function () -> ()),
    "  Print some information while processing");
   ("-V", Unit show_version,

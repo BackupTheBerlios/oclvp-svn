@@ -91,6 +91,8 @@ AT_CHECK([oclvp -oclexp 'context test inv: b.a()'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: b.a().c'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: b.a().c()'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: b@pre.a@pre().c@pre()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: 1.abs()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test inv: 1.0.abs()'], [0], [], [])
 AT_CLEANUP
 
 AT_SETUP([ocl-parse-associationcall])
@@ -126,4 +128,21 @@ AT_CHECK([oclvp -oclexp 'context test inv: self->iterate(a: Integer = 0 | a)'],
 	 [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test inv: self->iterate(a; x = 1 | x + a)'],
 	 [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([ocl-parse-message])
+AT_CHECK([oclvp -oclexp 'context test post: a^m()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^m(a)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^m(a, ?)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^m(a, ?, 0)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^m(a, ?: Integer)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^m(a, ?: Integer, 0)'], [0], [],
+	 [])
+AT_CHECK([oclvp -oclexp 'context test post: a^^m()'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^^m(a)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?, 0)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?: Integer)'], [0], [], [])
+AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?: Integer, 0)'], [0], [],
+	 [])
 AT_CLEANUP

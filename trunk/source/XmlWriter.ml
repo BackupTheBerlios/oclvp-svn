@@ -26,6 +26,9 @@
 type xmlwriter
 (** The type of the XML Text writer. *)
 
+external set_debug: bool -> unit = "xml_writer_set_debug"
+(** Whether to enable debugging output from the library.  Default is false. *)
+
 external to_file: string -> int -> xmlwriter = "xml_writer_to_file"
 (** Create an XML writer which writes to a file.
 
@@ -175,9 +178,6 @@ external start_dtd_element: xmlwriter -> string -> unit =
 
 external start_dtd_entity: xmlwriter -> bool -> string -> unit =
     "xml_writer_start_dtd_entity"
-
-external start_document: xmlwriter -> string -> string -> string -> unit =
-    "xml_writer_start_document"
 
 external start_element: xmlwriter -> string -> unit =
     "xml_writer_start_element"

@@ -57,7 +57,7 @@ bin_PROGRAMS	= oclvp oclvp.opt
 
 oclvp_SOURCES		= Version.ml ClassDiagram.ml ObjectDiagram.ml \
 			  StateMachine.ml OCL.mli OCL.ml SUML.ml XMI.ml \
-			  PVSBackEnd.ml Driver.ml
+			  Driver.ml
 
 oclvp_opt_SOURCES	= $(oclvp_SOURCES)
 
