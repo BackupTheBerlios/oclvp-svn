@@ -5,3 +5,6 @@ export XML_CATALOG_FILES
 
 XMLLINT=@XMLLINT@
 export XMLLINT
+
+OCLVP_DATA=@abs_top_srcdir@/share
+export OCLVP_DATA

@@ -27,6 +27,8 @@ MAINTAINERCLEANFILES	= Makefile.in testsuite package.m4
 AUTOTEST		= ${AUTOM4TE} --language=autotest
 TESTSUITE		= ${srcdir}/testsuite
 
+TESTFILES		= argouml.xmi rhapsody.xmi
+
 TESTPARTS		= 
 
 EXTRA_DIST		= ${srcdir}/atlocal.in ${srcdir}/catalog.in	\

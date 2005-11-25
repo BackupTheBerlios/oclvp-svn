@@ -1,3 +1,33 @@
+2005-11-25  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* source/Settings.ml: New file containing global settings.
+
+	* source/Makefile.am: Distribute Settings.ml
+
+	* source/Driver.ml: Use new module for global settings.
+
+	* source/XMI.ml: Small correction in writing temporary files.
+
+	* source/XmlReader.ml: Updated documentation. Function for
+	activating debugging output.
+
+	* source/Xslt.ml: Function for activating debugging output.
+
+	* source/xslt_stubs.c: Debugging output, simplifications, and
+	error corrections.
+
+	* source/xmlr_stubs.c, source/xmld_stubs.c: Added more debugging
+	output.
+
+	* tests/argouml.xmi, tests/rhapsody.xmi: Added two more test cases
+	for the XMI parser.
+
+	* tests/testsuite.at, tests/atlocal.in: Added test cases using the
+	XMI files and set up environment for testing the uninstalled
+	project.
+
+	* tests/Makefile.am: Distribute new files.
+
 2005-11-24  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* source/OCL.ml: Corrected an error in the way float literals and
@@ -8,7 +38,7 @@
 	the pretty printer and the conversion to XML.  Parse message
 	expressions.  More error corrections.
 
-	* source/OCL.mli:  Updated the abstract syntax in the interface.
+	* source/OCL.mli: Updated the abstract syntax in the interface.
 	Export the exceptions.
 
 	* source/Driver.ml: Updated the functions used for parsing ocl
@@ -17,15 +47,13 @@
 
 	* source/Makefile.am: Don't build the PVS Back End for now.
 
-	* source/xmlw_stubs.c:  Added debugging output.
+	* source/xmlw_stubs.c: Added debugging output.
 
-	* source/XmlWriter.ml:  Export setting the debug flag.
+	* source/XmlWriter.ml: Export setting the debug flag.
 
-	* tests/testsuite.at:  Added tests for OCL message expressions and
+	* tests/testsuite.at: Added tests for OCL message expressions and
 	a test case for the error in lexing integer literals and float
 	literals.
-
-	
 
 2005-11-23  Marcel Kyas  <mkyas@users.berlios.de>
 

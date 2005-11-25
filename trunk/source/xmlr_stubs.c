@@ -37,11 +37,46 @@
 #define XmlReader_val(v) (*(xmlTextReaderPtr*)Data_custom_val(v))
 
 
+#ifndef NDEBUG
+static int debug = 0;
+
+CAMLprim value
+xmlr_set_debug(value val)
+{
+	CAMLparam1 (val);
+	int _debug = Bool_val(val);
+
+	if (debug || _debug) {
+		fprintf(stderr, "XmlReader: setting debug to %d\n", _debug);
+		fflush(stderr);
+	}
+	debug = _debug;
+	CAMLreturn (Val_unit);
+}
+
+#else
+
+CAMLprim value
+xmlr_set_debug(value val)
+{
+	CAMLparam1 (val);
+	CAMLreturn (Val_unit);
+}
+
+#endif
+
+
 
 
 
 static void xml_reader_finalize(value v)
 {
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XmlReader: finalize %p\n", XmlReader_val(v));
+		fflush(stderr);
+	}
+#endif
 	xmlTextReaderClose(XmlReader_val(v));
 	/* XXX: api docs say this can fail. */
 }
@@ -88,6 +123,13 @@ xml_reader_new(xmlTextReaderPtr reader)
 	CAMLlocal1(vreader);
 	vreader = caml_alloc_custom(&xmlr_custom_operations, 4, 0, 1);
 	Field(vreader, 1) = (value)reader;
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XmlReader: wrapped %p\n",
+			XmlReader_val(vreader));
+		fflush(stderr);
+	}
+#endif
 	CAMLreturn(vreader);
 }
 
@@ -104,6 +146,14 @@ xml_reader_from_filename(value vencoding, value vopts, value filename)
 	reader = xmlReaderForFile(String_val(filename),
 				  xml_string_option(vencoding),
 				  load_opts(vopts));
+
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XmlReader: create reader %p from file %s\n",
+			reader, String_val(filename));
+		fflush(stderr);
+	}
+#endif
 
 	CAMLreturn(xml_reader_new(reader));
 }
@@ -125,6 +175,13 @@ xml_reader_from_string(value baseurl, value encoding, value opts, value str)
 				    xml_string_option(encoding),
 				    load_opts(opts));
 
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XmlReader: create reader %p from string %s\n",
+			reader, String_val(str));
+		fflush(stderr);
+	}
+#endif
 	CAMLreturn(xml_reader_new(reader));
 }
 

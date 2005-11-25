@@ -23,6 +23,8 @@
 
 type stylesheet
 
+external set_debug: bool -> unit = "xslt_set_debug"
+
 external parse_stylesheet_doc: Xml.doc -> stylesheet =
     "xslt_parse_stylesheet_doc"
 
@@ -32,5 +34,4 @@ external transform: stylesheet -> Xml.doc -> Xml.doc = "xslt_transform"
 (** Transform an XML document.
 
     @param stylesheet  The stylesheet used for transforming the document.
-    @param source      The document to transform.
-    @param target      The name of the result document. *)
+    @param source      The document to transform. *)

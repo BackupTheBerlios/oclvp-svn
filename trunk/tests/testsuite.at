@@ -146,3 +146,8 @@ AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?: Integer)'], [0], [], [])
 AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?: Integer, 0)'], [0], [],
 	 [])
 AT_CLEANUP
+
+AT_SETUP([xmi-parse])
+AT_CHECK([oclvp ${abs_srcdir}/argouml.xmi], [0], [], [])
+AT_CHECK([oclvp ${abs_srcdir}/rhapsody.xmi], [0], [], [])
+AT_CLEANUP

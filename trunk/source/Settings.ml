@@ -1,5 +1,5 @@
 (*
- * XMI.ml -- Try to read an XMI file.
+ * Settings.ml -- Global settings controlling the system.
  *
  * This file is part of oclvp
  *
@@ -21,26 +21,6 @@
  * 02111-1307, USA.
  *)
 
-open XmlReader;;
+let keep_temps = ref false
 
-let stylesheet =
-  let name = "xmi2suml.xsl" in
-    if Sys.file_exists name
-    then name
-    else
-      let path =
-	try
-	  Sys.getenv "OCLVP_DATA"
-	with
-	    Not_found -> Version.oclvp_datadir
-      in
-	Filename.concat path name
-
-let from_file file =
-  let target = Filename.temp_file "oclvp" ".suml" in
-    Xml.to_file
-      (Xslt.transform (Xslt.parse_stylesheet stylesheet) (Xml.from_file file))
-      target true;
-    let result = SUML.from_file target in
-      if not !Settings.keep_temps then (Sys.remove target);
-      result
+let dump_to_xml = ref false

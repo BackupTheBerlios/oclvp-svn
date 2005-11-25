@@ -23,8 +23,6 @@
 
 open Arg;;
 
-let dump_to_xml = ref false
-
 
 
 
@@ -42,7 +40,7 @@ let ignore x = ()
 
 let ocl_from_file name =
   let tree = OCL.from_file name in
-    if !dump_to_xml then
+    if !Settings.dump_to_xml then
       begin
 	print_endline "Here!";
 	OCL.unit_to_xml (XmlWriter.to_file "-" 0) tree
@@ -52,7 +50,7 @@ let ocl_from_file name =
 
 let ocl_from_string expr =
   let tree = OCL.from_string expr in
-    if !dump_to_xml then
+    if !Settings.dump_to_xml then
       begin
 	let writer = XmlWriter.to_file "-" 0 in
 	  XmlWriter.set_indent writer true;
@@ -81,7 +79,8 @@ let options = [
    "file  Read a Simplified UML file");
   ("-xmi", String (function f -> ignore (XMI.from_file f)),
    "file  Read an XMI file");
-  ("-dump", Set dump_to_xml, "  Write the tree to XML after parsing");
+  ("-dump", Set Settings.dump_to_xml, "  Write the tree to XML after parsing");
+  ("-keep-temps", Set Settings.keep_temps, "  Keep temporary files.");
   ("-v", Unit (function () -> ()),
    "  Print some information while processing");
   ("-V", Unit show_version,

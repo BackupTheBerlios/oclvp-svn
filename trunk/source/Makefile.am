@@ -55,8 +55,9 @@ OCAMLOPT_FLAGS		= -I . -I ${srcdir} -linkpkg -package .
 
 bin_PROGRAMS	= oclvp oclvp.opt
 
-oclvp_SOURCES		= Version.ml ClassDiagram.ml ObjectDiagram.ml \
-			  StateMachine.ml OCL.mli OCL.ml SUML.ml XMI.ml \
+oclvp_SOURCES		= Version.ml Settings.ml ClassDiagram.ml \
+			  ObjectDiagram.ml StateMachine.ml \
+			  OCL.mli OCL.ml SUML.ml XMI.ml \
 			  Driver.ml
 
 oclvp_opt_SOURCES	= $(oclvp_SOURCES)

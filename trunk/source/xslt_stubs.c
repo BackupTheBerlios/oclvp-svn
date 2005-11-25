@@ -33,9 +33,46 @@
 
 #define XsltStylesheet_val(v) (*(xsltStylesheetPtr*) Data_custom_val(v))
 
+
+#ifndef NDEBUG
+static int debug = 0;
+
+CAMLprim value
+xslt_set_debug(value val)
+{
+	CAMLparam1 (val);
+	int _debug = Bool_val(val);
+
+	if (debug || _debug) {
+		fprintf(stderr, "XSLT: setting debug to %d\n", _debug);
+		fflush(stderr);
+	}
+	debug = _debug;
+	CAMLreturn (Val_unit);
+}
+
+#else
+
+CAMLprim value
+xslt_set_debug(value val)
+{
+	CAMLparam1 (val);
+	CAMLreturn (Val_unit);
+}
+
+#endif
+
+
 static void
 xslt_stylesheet_finalize(value v)
 {
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XSLT: xslt_stylesheet_finalize %p\n",
+			XsltStylesheet_val (v));
+		fflush(stderr);
+	}
+#endif
         xsltFreeStylesheet(XsltStylesheet_val(v));
 }
 
@@ -63,6 +100,13 @@ xslt_stylesheet_new(xsltStylesheetPtr arg)
         CAMLlocal1(res);
         res = caml_alloc_custom(&xslt_stylesheet_custom_operations, 4, 0, 1);
         Field(res, 1) = (value) arg;
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XSLT: wrap stylesheet %p\n",
+			XsltStylesheet_val (res));
+		fflush(stderr);
+	}
+#endif
         CAMLreturn(res);
 }
 
@@ -72,6 +116,13 @@ xslt_stylesheet_new(xsltStylesheetPtr arg)
 static void
 xslt_transform_ctxt_finalize(value v)
 {
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XSLT: finalize transform context %p\n",
+			XsltTransformCtxt_val(v));
+		fflush(stderr);
+	}
+#endif
         xsltFreeTransformContext(XsltTransformCtxt_val(v));
 }
 
@@ -100,6 +151,13 @@ xslt_transform_ctxt_new(xsltTransformContextPtr arg)
         res = caml_alloc_custom(&xslt_transform_ctxt_custom_operations, 4, 0,
 				1);
         Field(res, 1) = (value) arg;
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XSLT: wrap transform context %p\n",
+			XsltTransformCtxt_val(res));
+		fflush(stderr);
+	}
+#endif
         CAMLreturn(res);
 }
 
@@ -117,32 +175,44 @@ xslt_parse_stylesheet_doc(value doc)
 			xsltFreeStylesheet(style);
 		caml_failwith("xsltParseStylesheetDoc");
 	}
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "XSLT: parse style sheet %p from doc %p\n",
+			style, XmlDoc_val(doc));
+		fflush(stderr);
+	}
+#endif
 	CAMLreturn (xslt_stylesheet_new(style));
 }
 
 
 
 CAMLprim value
-xslt_transform(value stylesheet, value doc, value target)
+xslt_transform(value stylesheet, value doc)
 {
-	CAMLparam3(stylesheet, doc, target);
-	xsltTransformContextPtr ctxt;
-	xmlDocPtr result;
+	CAMLparam2(stylesheet, doc);
+	xmlDocPtr result, _doc = XmlDoc_val(doc);
+	xsltStylesheetPtr _stylesheet = XsltStylesheet_val(stylesheet);
 
-	ctxt = xsltNewTransformContext(XsltStylesheet_val(stylesheet),
-				       XmlDoc_val(doc));
-	if (ctxt == NULL) {
-		caml_failwith("xmlNewTransformContext");
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr,
+			"XSLT: transform document %p with stylesheet %p ",
+			_doc, _stylesheet);
+		fflush(stderr);
 	}
-	result = xsltApplyStylesheetUser(XsltStylesheet_val(stylesheet),
-					 XmlDoc_val(doc),
-					 NULL, NULL, NULL, ctxt);
-	if (ctxt->state == XSLT_STATE_ERROR) {
-		caml_failwith("Transformation had errors");
-	} else if (ctxt->state == XSLT_STATE_STOPPED) {
-		caml_failwith("Transformation stopped.");
-	} else if (XmlDoc_val(result)->URL == NULL ) {
-		XmlDoc_val(result)->URL = xmlStrdup(XmlDoc_val(doc)->URL);
+#endif
+	result = xsltApplyStylesheet(_stylesheet, _doc, NULL);
+	if (result == NULL) {
+		caml_failwith("xsltApplyStylesheet");
+	} else if (result->URL == NULL ) {
+		result->URL = xmlStrdup(_doc->URL);
 	}
+#ifndef NDEBUG
+	if (debug) {
+		fprintf(stderr, "result = %p\n", result);
+		fflush(stderr);
+	}
+#endif
 	CAMLreturn(xml_doc_new(result));
 }
