@@ -1,5 +1,10 @@
 2005-11-25  Marcel Kyas  <mkyas@users.berlios.de>
 
+	* oclvp.spec.in: Build an ocaml-xml2 package.
+
+	* configure.ac: Corrected the configuration for building
+	ocaml-xml2.
+
 	* source/Settings.ml: New file containing global settings.
 
 	* source/Makefile.am: Distribute Settings.ml

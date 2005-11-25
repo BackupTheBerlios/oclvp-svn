@@ -45,7 +45,7 @@ AC_CHECK_PROG([OCAMLMKLIB], [ocamlmklib], [ocamlmklib], [false])
 AC_CHECK_PROG([OCAMLWEB], [ocamlweb], [ocamlweb], [echo])
 
 dnl figure out the site-lib directory. The following is bogus...
-OCAML_LIBDIR=$libdir/ocaml
+OCAML_LIBDIR='${libdir}/ocaml'
 OCAML_SITELIB='${OCAML_LIBDIR}/site-lib'
 AC_SUBST([OCAML_LIBDIR], [$OCAML_LIBDIR])
 AC_SUBST([OCAML_SITELIB], [$OCAML_SITELIB])

@@ -11,10 +11,20 @@ BuildRoot:	%{_tmppath}/%{name}-root
 BuildRequires: autoconf >= 2.59
 BuildRequires: automake >= 1.9
 BuildRequires: ocaml >= 3.08
-BuildRequires: ocaml-findlib >= 1.0.4
-BuildRequires: ocaml-xmlr >= 1.0
+BuildRequires: ocaml-findlib >= 1.1
+
+%define ocamllib %(ocamlc -where)
+%define sitelib %{ocamllib}/site-lib
 
 %description
+
+
+%package -n ocaml-xml2
+Summary: Bind libxml2 to OCaml
+Group: Development/Libraries
+
+%description -n ocaml-xml2
+Bind libxml2 to OCaml
 
 %prep
 rm -rf %{buildroot}
@@ -45,11 +55,30 @@ rm -rf %{buildroot}
 %preun
 /usr/sbin/install-info --delete %{_infodir}/%{name}.info %{_infodir}/dir
 
+%post -n ocaml-xml2
+test -d %{ocamllib} && ( echo %{sitelib}/xml >> %{ocamllib}/ld.conf )
+chmod 0644 %{ocamllib}/ld.conf
+chown root:root %{ocamllib}/ld.conf
+ldconfig
+
+%postun -n ocaml-xml2
+grep -v '%{sitelib}/xml' %{ocamllib}/ld.conf > /var/tmp/ld.conf.ocaml-xml2
+mv var/tmp/ld.conf.ocaml-xml2 %{ocamllib}/ld.conf
+chmod 0644 %{ocamllib}/ld.conf
+chown root:root %{ocamllib}/ld.conf
+ldconfig
+
 %files
 %defattr(-,root,root)
 %doc AUTHORS ChangeLog COPYING INSTALL NEWS README
 %{_bindir}/oclvp
 %{_infodir}/*
+
+%files -n ocaml-xml2
+%defattr(-,root,root)
+%dir %{sitelib}/xml
+%{sitelib}/xml/*
+
 
 %changelog
 * Sat Nov 5 2005 Marcel Kyas <mkyas@users.berlios.de>
