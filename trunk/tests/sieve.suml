@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <head>
+    <meta name="Exporter" value="XMI Toolkit for Rhapsody"/>
+    <meta name="Version" value ="1.5.8"/>
+  </head>
+  <package name="sieve">
+    <class name="Sieve" kind="passive">
+      <attribute name="p" type="Integer"/>
+      <attribute name="z" type="Integer"/>
+      <reception name="e" id="_43">
+        <parameter name="z" type="Integer"/>
+      </reception>
+      <statemachine>
+        <region>
+          <state name="state_0" id="_25"/>
+          <state name="state_1" id="_28"/>
+          <state name="state_2" id="_31"/>
+          <state id="_32" kind="initial"/>
+          <transition source="_32" target="_25"/>
+          <transition source="_25" target="_31">
+            <trigger idref="_43"/>
+            <action lang="OMEGA">p := z</action>
+          </transition>
+          <transition source="_31" target="_28">
+            <action lang="OMEGA">itsSieve := new Sieve</action>
+          </transition>
+          <transition source="_28" target="_28">
+            <trigger idref="_43"/>
+            <guard lang="OCL">z.mod(p) &lt;&gt; 0</guard>
+            <action lang="OMEGA">itsSieve!e(z)</action>
+          </transition>
+        </region>
+      </statemachine>
+    </class>
+    <class name="Generator" kind="passive">
+      <attribute name="x" type="Integer"/>
+      <reception name="start" id="_73"/>
+      <statemachine>
+        <region>
+          <state name="state_0" id="_57"/>
+          <state name="state_3" id="_60"/>
+          <state name="state_1" id="_63"/>
+          <state id="_64" kind="initial"/>
+          <transition source="_64" target="_57"/>
+          <transition source="_57" target="_63">
+            <trigger idref="_73"/>
+            <action lang="OMEGA">itsSieve := new Sieve</action>
+          </transition>
+          <transition source="_63" target="_60">
+            <action lang="OMEGA">itsSieve!e(x)</action>
+          </transition>
+          <transition source="_60" target="_63">
+            <action lang="OMEGA">x := x + 1</action>
+          </transition>
+        </region>
+      </statemachine>
+    </class>
+    <association>
+      <associationend name="itsSieve" aggregation="none" isnavigable="true" class="Sieve"/>
+      <associationend aggregation="none" isnavigable="false" class="Sieve"/>
+    </association>
+    <association>
+      <associationend name="itsSieve" aggregation="none" isnavigable="true" class="Sieve"/>
+      <associationend name="itsGenerator" aggregation="none" isnavigable="true" class="Generator"/>
+    </association>
+  </package>
+</suml>

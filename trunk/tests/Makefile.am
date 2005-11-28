@@ -27,7 +27,7 @@ MAINTAINERCLEANFILES	= Makefile.in testsuite package.m4
 AUTOTEST		= ${AUTOM4TE} --language=autotest
 TESTSUITE		= ${srcdir}/testsuite
 
-TESTFILES		= argouml.xmi rhapsody.xmi
+TESTFILES		= argouml.xmi rhapsody.xmi sieve.suml
 
 TESTPARTS		= 
 

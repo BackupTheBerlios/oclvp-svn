@@ -147,6 +147,582 @@ AT_CHECK([oclvp -oclexp 'context test post: a^^m(a, ?: Integer, 0)'], [0], [],
 	 [])
 AT_CLEANUP
 
+AT_SETUP([suml-parse-header])
+AT_DATA([1.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2"/>
+]])
+AT_DATA([2.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <head/>
+</suml>
+]])
+AT_DATA([3.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <head>
+    <meta name="version" value="1"/>
+  </head>
+</suml>
+]])
+AT_CHECK([oclvp 1.suml], [0], [], [])
+AT_CHECK([oclvp 2.suml], [0], [], [])
+AT_CHECK([oclvp 3.suml], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([suml-parse-classdia])
+AT_DATA([1.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="suml-0">
+    <class name="A">
+      <attribute name="a1" type="Boolean"/>
+      <attribute name="a2" type="Integer"/>
+      <attribute name="a3" type="Real"/>
+    </class>
+    <class name="B">
+      <attribute name="b1" type="Boolean"/>
+      <attribute name="b2" type="Integer"/>
+      <attribute name="p1" type="Integer"/>
+      <operation name="o1" type="Integer"/>
+      <operation name="o2" type="Integer">
+        <parameter name="p1" type="Integer"/>
+      </operation>
+      <reception name="s1"/>
+      <reception name="s2">
+        <parameter name="p1" type="Integer"/>
+      </reception>
+    </class>
+    <association>
+      <associationend name="ba" class="A"/>
+      <associationend name="ab" class="B"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_DATA([2.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="suml-1">
+    <class name="A">
+      <constraint stereotype="inv" lang="OCL">true</constraint>
+      <constraint stereotype="inv" lang="ASO/OCL">1+1&gt;1</constraint>
+      <constraint stereotype="inv" lang="PVS">PVS works?</constraint>
+      <constraint stereotype="inv" lang="Bogus">Bogus Constraint</constraint>
+    </class>
+  </package>
+</suml>
+]])
+AT_DATA([3.suml],
+[[<?xml version="1.0"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="suml-2">
+    <class name="B" kind="passive">
+      <operation name="op1" type="bool">
+        <parameter name="p1" type="int"/>
+        <implementation lang="PVS">test</implementation>
+      </operation>
+    </class>
+    <class name="bool" kind="passive"/>
+    <class name="int" kind="passive"/>
+    <class name="A" kind="passive">
+      <attribute name="a1" type="int"/>
+      <attribute name="a2" type="int"/>
+      <reception name="s"/>
+      <constraint lang="ASO/OCL" stereotype="inv">true</constraint>
+    </class>
+    <association name="a">
+      <associationend name="a" class="A" aggregation="none" isnavigable="true"/>
+      <associationend name="b" class="B" aggregation="none" isnavigable="true"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp ${abs_srcdir}/1.suml], [0], [], [])
+AT_CHECK([oclvp ${abs_srcdir}/2.suml], [0], [], [])
+AT_CHECK([oclvp ${abs_srcdir}/3.suml], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([suml-parse-classdia])
+AT_DATA([1.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="constraint-01">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <constraint lang="OCL" stereotype="inv">i &lt;&gt; 0</constraint>
+    </class>
+  </package>
+</suml>
+]])
+AT_DATA([2.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="constraint-01">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <constraint lang="OCL" stereotype="inv">i &lt; true</constraint>
+    </class>
+  </package>
+</suml>
+]])
+AT_DATA([3.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="constraint-01">
+    <class name="A">
+      <constraint lang="OCL" stereotype="inv">(a.a)->isEmpty()</constraint>
+    </class>
+    <association>
+      <associationend name="a" class="A" isnavigable="false"/>
+      <associationend name="b" class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+
+AT_CHECK([oclvp ${abs_srcdir}/1.suml], [0], [], [])
+AT_CHECK([oclvp ${abs_srcdir}/2.suml], [0], [], [])
+AT_CHECK([oclvp ${abs_srcdir}/3.suml], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([suml-parse-action])
+AT_DATA([01.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-01">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA"/>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 01.suml], [0], [], [])
+
+AT_DATA([02.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-02">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          i := 1
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 02.suml], [0], [], [])
+
+AT_DATA([03.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-03">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          return i
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 03.suml], [0], [], [])
+
+AT_DATA([04.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-04">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          a!s()
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 04.suml], [0], [], [])
+
+AT_DATA([05.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-05">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          i := a.op1()
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 05.suml], [0], [], [])
+
+AT_DATA([06.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-06">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op3" type="OclVoid">
+        <implementation lang="OMEGA">
+          a := new A
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 06.suml], [0], [], [])
+
+AT_DATA([07.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-07">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          if i = 0 then i := 1 else i := 0 endif
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 07.suml], [0], [], [])
+
+AT_DATA([08.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="simple">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          while i > 0 do i := i - 1 endwhile
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 08.suml], [0], [], [])
+
+AT_DATA([09.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-09">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          i := 1 ; i := 2; i := 3
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 09.suml], [0], [], [])
+
+AT_DATA([10.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="simple">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          if i > 0 then i := 1 endif
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 10.suml], [0], [], [])
+
+AT_DATA([11.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-11">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          i := 1
+        </implementation>
+      </operation>
+      <operation name="op2" type="OclVoid">
+        <implementation lang="OMEGA">
+          if i = 0 then i := 1 else i := 0 endif
+        </implementation>
+      </operation>
+      <operation name="op3" type="OclVoid">
+        <implementation lang="OMEGA">
+          a := new A
+        </implementation>
+      </operation>
+      <operation name="op4" type="OclVoid">
+        <implementation lang="OMEGA">
+          a!s()
+        </implementation>
+      </operation>
+      <operation name="op5" type="OclVoid">
+        <implementation lang="OMEGA">
+          i := 1 ; i := 2; i := 3
+        </implementation>
+      </operation>
+      <operation name="op6" type="Integer">
+        <implementation lang="OMEGA">
+          return i
+        </implementation>
+      </operation>
+      <operation name="op7" type="OclVoid">
+        <implementation lang="OMEGA">
+          while i > 0 do i := i - 1 endwhile
+        </implementation>
+      </operation>
+      <operation name="op8" type="Integer">
+        <implementation lang="OMEGA">
+          return op6()
+        </implementation>
+      </operation>
+      <operation name="op9" type="Integer">
+        <implementation lang="OMEGA">
+          return op6
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 11.suml], [0], [], [])
+
+AT_DATA([12.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-12">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <reception name="s">
+        <parameter name="i" type="Integer"/>
+      </reception>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">
+          a!s(i)
+        </implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 12.suml], [0], [], [])
+
+AT_DATA([13.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-13">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="Integer">
+        <implementation lang="OMEGA">i := op1()</implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 13.suml], [0], [], [])
+
+AT_DATA([14.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-14">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="Integer">
+        <implementation lang="OMEGA">i := self.op1()</implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 14.suml], [0], [], [])
+
+AT_DATA([15.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-15">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="Integer">
+        <implementation lang="OMEGA">i := a.op1()</implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 15.suml], [0], [], [])
+
+AT_DATA([16.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-16">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">op1()</implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 16.suml], [0], [], [])
+
+AT_DATA([17.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-17">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">self.op1()</implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 17.suml], [0], [], [])
+
+AT_DATA([18.suml],
+[[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
+<suml version="0.2">
+  <package name="action-18">
+    <class name="A">
+      <attribute name="i" type="Integer"/>
+      <operation name="op1" type="OclVoid">
+        <implementation lang="OMEGA">a.op1()</implementation>
+      </operation>
+    </class>
+    <association>
+      <associationend name="a" class="A" aggregation="aggregate"/>
+      <associationend class="A"/>
+    </association>
+  </package>
+</suml>
+]])
+AT_CHECK([oclvp 18.suml], [0], [], [])
+AT_CLEANUP
+
 AT_SETUP([xmi-parse])
 AT_CHECK([oclvp ${abs_srcdir}/argouml.xmi], [0], [], [])
 AT_CHECK([oclvp ${abs_srcdir}/rhapsody.xmi], [0], [], [])
