@@ -1,5 +1,5 @@
 (*
- * Model.ml -- Definition of the abstract syntax of a model.
+ * Package.ml -- Definition of the abstract syntax of a package.
  *
  * This file is part of oclvp
  *
@@ -21,13 +21,16 @@
  * 02111-1307, USA.
  *)
 
-(** Definition of a model. *)
+type package = { package_name: string;
+	         package_packages: (string, package) Hashtbl.t }
 
-(** The type of a model. *)
-type model
+let name package = package.package_name
 
-(** Create a new, empty model. *)
-val create: string -> model
+let create name =
+  { package_name = name; package_packages = Hashtbl.create 17 }
 
-(** Add a package to the model. *)
-val add_package: model -> Package.package -> unit
+let add_package pkg package =
+  Hashtbl.add pkg.package_packages (name package) package
+
+let add_classifier pkg classifier =
+  ()

@@ -21,6 +21,10 @@
  * 02111-1307, USA.
  *)
 
-type model = { modelname: string }
+type model = { modelname: string;
+	       packages: (string, Package.package) Hashtbl.t }
 
-let create name = { modelname = name }
+let create name = { modelname = name; packages = Hashtbl.create 17 }
+
+let add_package model package =
+	Hashtbl.add model.packages (Package.name package) package

@@ -1,5 +1,5 @@
 (*
- * Model.ml -- Definition of the abstract syntax of a model.
+ * Package.mli -- Definition of the abstract syntax of a model.
  *
  * This file is part of oclvp
  *
@@ -21,13 +21,19 @@
  * 02111-1307, USA.
  *)
 
-(** Definition of a model. *)
+(** Definition of a package. *)
 
-(** The type of a model. *)
-type model
+(** The type of a package. *)
+type package
 
-(** Create a new, empty model. *)
-val create: string -> model
+(** Create a new, empty package. *)
+val create: string -> package
 
-(** Add a package to the model. *)
-val add_package: model -> Package.package -> unit
+(** Get the name of a package. *)
+val name: package -> string
+
+(** Add a sub-package to the package. *)
+val add_package: package -> package -> unit
+
+(** Add a classifier to the package. *)
+val add_classifier: package -> Classifier.classifier -> unit

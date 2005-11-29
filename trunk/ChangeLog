@@ -1,9 +1,17 @@
 2005-11-29  Marcel Kyas  <mkyas@users.berlios.de>
 
-	* source/Model.mli, source/Model.ml: Interface and implementation
-	to the model manager.
+	* source/Classifier.mli, source/Classifier.ml: Added interface and
+	implementation of a classifier.
+
+	* source/Package.mli, source/Package.ml: Added interface and
+	implementation of a package.
+
+	* source/Model.mli, source/Model.ml: Added interface and
+	implementation to the model manager.
 
 	* source/SUML.mli: Added interface to the SUML parser.
+
+	* source/SUML.ml: Started a reader to the simplified UML format.
 
 	* source/Makefile.am: Distribute new files.
 

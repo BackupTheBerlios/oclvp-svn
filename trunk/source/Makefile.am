@@ -57,7 +57,9 @@ bin_PROGRAMS	= oclvp oclvp.opt
 
 oclvp_SOURCES		= Version.ml Settings.ml ClassDiagram.ml \
 			  ObjectDiagram.ml StateMachine.ml \
-			  OCL.mli OCL.ml Model.mli Model.ml \
+			  OCL.mli OCL.ml \
+			  Classifier.mli Classifier.ml \
+			  Package.mli Package.ml Model.mli Model.ml \
 			  SUML.mli SUML.ml XMI.ml \
 			  Driver.ml
 

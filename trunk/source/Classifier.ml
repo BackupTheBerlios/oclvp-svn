@@ -1,5 +1,5 @@
 (*
- * Model.ml -- Definition of the abstract syntax of a model.
+ * Classifier.mli -- Interface to the abstract data type of a classifier.
  *
  * This file is part of oclvp
  *
@@ -21,13 +21,9 @@
  * 02111-1307, USA.
  *)
 
-(** Definition of a model. *)
+type classifier = { classifier_name: string }
 
-(** The type of a model. *)
-type model
+let name cls = cls.classifier_name
 
-(** Create a new, empty model. *)
-val create: string -> model
-
-(** Add a package to the model. *)
-val add_package: model -> Package.package -> unit
+let create name =
+  { classifier_name = name }
