@@ -292,7 +292,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
     <xsl:variable name="signals" select="Foundation.Core.Classifier.feature/Behavioral_Elements.Common_Behavior.Reception"/>
     <xsl:if test="count($signals) &gt; 0">
       <xsl:for-each select="$signals">
-        <signal>
+        <reception>
           <xsl:attribute name="name">
             <xsl:value-of select="Foundation.Core.ModelElement.name"/>
           </xsl:attribute>
@@ -300,7 +300,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
             <xsl:value-of select="Behavioral_Elements.Common_Behavior.Reception.signal/Behavioral_Elements.Common_Behavior.Signal/@xmi.idref"/>
           </xsl:attribute>
           <xsl:apply-templates select="Foundation.Core.BehavioralFeature.parameter/Foundation.Core.Parameter[Foundation.Core.Parameter.kind/@xmi.value!='return']"/>
-        </signal>
+        </reception>
       </xsl:for-each>
     </xsl:if>
   </xsl:template>

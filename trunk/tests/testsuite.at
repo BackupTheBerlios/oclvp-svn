@@ -727,6 +727,11 @@ AT_SETUP([suml-parse-action])
 AT_CHECK([oclvp ${abs_srcdir}/sieve.suml], [0], [], [])
 AT_CLEANUP
 
+AT_SETUP([xslt])
+AT_CHECK([${XSLTPROC} ${abs_top_srcdir}/share/xmi2suml.xsl ${abs_srcdir}/argouml.xmi | ${XMLLINT} --noout --valid -], [0], [], [])
+AT_CHECK([${XSLTPROC} ${abs_top_srcdir}/share/xmi2suml.xsl ${abs_srcdir}/rhapsody.xmi | ${XMLLINT} --noout --valid -], [0], [], [])
+AT_CLEANUP
+
 AT_SETUP([xmi-parse])
 AT_CHECK([oclvp ${abs_srcdir}/argouml.xmi], [0], [], [])
 AT_CHECK([oclvp ${abs_srcdir}/rhapsody.xmi], [0], [], [])

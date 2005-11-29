@@ -38,6 +38,7 @@ AC_PATH_PROG([M4], m4)
 AC_PATH_PROG([AUTOM4TE], autom4te)
 AC_PATH_PROG([DIFF], diff)
 AC_PATH_PROG([XMLLINT], xmllint)
+AC_PATH_PROG([XSLTPROC], xsltproc)
 
 dnl Check for the tools needed to compile ocaml code.
 AC_CHECK_PROG([OCAMLFIND], [ocamlfind], [ocamlfind], [false])

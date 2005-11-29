@@ -4,7 +4,8 @@ XML_CATALOG_FILES=@abs_builddir@/catalog
 export XML_CATALOG_FILES
 
 XMLLINT=@XMLLINT@
-export XMLLINT
+XSLTPROC=@XSLTPROC@
+export XMLLINT XSLTPROC
 
 OCLVP_DATA=@abs_top_srcdir@/share
 export OCLVP_DATA
