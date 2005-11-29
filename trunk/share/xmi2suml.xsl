@@ -24,7 +24,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 -->
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-  <xsl:output doctype-system="suml.dtd"/>
+  <xsl:output method="xml"
+              doctype-public="-//Marcel Kyas//DTD suml XML 0.2//EN"
+              doctype-system="http://oclvp.berlios.de/suml02.dtd"
+              indent="yes" />
   <xsl:variable name="modelname">
     <xsl:apply-templates select="/XMI/XMI.content/Model_Management.Model"/>
   </xsl:variable>
@@ -82,9 +85,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   </xsl:template>
   <xsl:template match="Foundation.Core.Namespace.ownedElement/Behavioral_Elements.State_Machines.StateMachine">
     <statemachine>
-      <xsl:variable name="states" select="Behavioral_Elements.State_Machines.StateMachine.top/Behavioral_Elements.State_Machines.CompositeState/Behavioral_Elements.State_Machines.CompositeState.subvertex"/>
-      <xsl:apply-templates select="$states/Behavioral_Elements.State_Machines.Pseudostate|$states/Behavioral_Elements.State_Machines.State"/>
-      <xsl:apply-templates select="Behavioral_Elements.State_Machines.StateMachine.transitions/Behavioral_Elements.State_Machines.Transition"/>
+      <region>
+        <xsl:variable name="states" select="Behavioral_Elements.State_Machines.StateMachine.top/Behavioral_Elements.State_Machines.CompositeState/Behavioral_Elements.State_Machines.CompositeState.subvertex"/>
+        <xsl:apply-templates select="$states/Behavioral_Elements.State_Machines.Pseudostate|$states/Behavioral_Elements.State_Machines.State"/>
+        <xsl:apply-templates select="Behavioral_Elements.State_Machines.StateMachine.transitions/Behavioral_Elements.State_Machines.Transition"/>
+      </region>
     </statemachine>
   </xsl:template>
   <xsl:template match="Behavioral_Elements.State_Machines.Transition">
@@ -179,7 +184,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
       </xsl:attribute>
       <xsl:variable name="navigable" select="Foundation.Core.AssociationEnd.isNavigable/@xmi.value"/>
       <xsl:if test="$navigable!=''">
-        <xsl:attribute name="isNavigable">
+        <xsl:attribute name="isnavigable">
           <xsl:value-of select="$navigable"/>
         </xsl:attribute>
       </xsl:if>
