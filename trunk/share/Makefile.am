@@ -24,4 +24,4 @@ CLEANFILES		=
 DISTCLEANFILES		=
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= suml.dtd xmi2suml.xsl
+EXTRA_DIST		= suml02.dtd xmi2suml.xsl

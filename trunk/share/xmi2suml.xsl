@@ -302,13 +302,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   <xsl:template match="/">
     <suml version="0.2">
       <head>
-        <exporter name="{$exportername}" version="{$exporterversion}"/>
+        <meta name="exporter" value="{$exportername}" />
+        <meta name="version" value="{$exporterversion}" />
       </head>
-      <classdiagram name="{$modelname}">
+      <package name="{$modelname}">
         <xsl:apply-templates select="//Foundation.Core.DataType[@xmi.id]"/>
         <xsl:apply-templates select="//Foundation.Core.Class[@xmi.id]"/>
         <xsl:apply-templates select="//Foundation.Core.Association[@xmi.id]"/>
-      </classdiagram>
+      </package>
     </suml>
   </xsl:template>
 </xsl:stylesheet>

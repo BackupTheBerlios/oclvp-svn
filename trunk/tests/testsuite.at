@@ -245,9 +245,9 @@ AT_DATA([3.suml],
   </package>
 </suml>
 ]])
-AT_CHECK([oclvp ${abs_srcdir}/1.suml], [0], [], [])
-AT_CHECK([oclvp ${abs_srcdir}/2.suml], [0], [], [])
-AT_CHECK([oclvp ${abs_srcdir}/3.suml], [0], [], [])
+AT_CHECK([oclvp 1.suml], [0], [], [])
+AT_CHECK([oclvp 2.suml], [0], [], [])
+AT_CHECK([oclvp 3.suml], [0], [], [])
 AT_CLEANUP
 
 AT_SETUP([suml-parse-classdia])
@@ -291,9 +291,9 @@ AT_DATA([3.suml],
 </suml>
 ]])
 
-AT_CHECK([oclvp ${abs_srcdir}/1.suml], [0], [], [])
-AT_CHECK([oclvp ${abs_srcdir}/2.suml], [0], [], [])
-AT_CHECK([oclvp ${abs_srcdir}/3.suml], [0], [], [])
+AT_CHECK([oclvp 1.suml], [0], [], [])
+AT_CHECK([oclvp 2.suml], [0], [], [])
+AT_CHECK([oclvp 3.suml], [0], [], [])
 AT_CLEANUP
 
 AT_SETUP([suml-parse-action])
@@ -721,6 +721,10 @@ AT_DATA([18.suml],
 </suml>
 ]])
 AT_CHECK([oclvp 18.suml], [0], [], [])
+AT_CLEANUP
+
+AT_SETUP([suml-parse-action])
+AT_CHECK([oclvp ${abs_srcdir}/sieve.suml], [0], [], [])
 AT_CLEANUP
 
 AT_SETUP([xmi-parse])
