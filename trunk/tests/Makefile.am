@@ -21,7 +21,7 @@
 
 MOSTLYCLEANFILES	= 
 CLEANFILES		= testsuite.log
-DISTCLEANFILES		= atconfig atlocal catalog
+DISTCLEANFILES		= atconfig atlocal
 MAINTAINERCLEANFILES	= Makefile.in testsuite package.m4
 
 AUTOTEST		= ${AUTOM4TE} --language=autotest
@@ -31,11 +31,10 @@ TESTFILES		= argouml.xmi rhapsody.xmi sieve.suml
 
 TESTPARTS		= 
 
-EXTRA_DIST		= ${srcdir}/atlocal.in ${srcdir}/catalog.in	\
-			  ${srcdir}/testsuite.at package.m4 testsuite	\
-			  ${TESTPARTS} ${TESTFILES}
+EXTRA_DIST		= ${srcdir}/atlocal.in ${srcdir}/testsuite.at \
+			  package.m4 testsuite ${TESTPARTS} ${TESTFILES}
 
-check-local: atconfig atlocal catalog ${TESTSUITE}
+check-local: atconfig atlocal ${TESTSUITE}
 	$(SHELL) $(TESTSUITE)
 
 clean-local:
@@ -53,6 +52,3 @@ package.m4: ${top_srcdir}/configure.ac
 	   echo 'm4_define([AT_PACKAGE_STRING],    [@PACKAGE_STRING@])';      \
 	   echo 'm4_define([AT_PACKAGE_BUGREPORT], [@PACKAGE_BUGREPORT@])';   \
 	} >$(srcdir)/package.m4
-
-catalog: ${srcdir}/catalog.in
-	sed s,@top_srcdir\@,${top_srcdir},g < ${srcdir}/catalog.in > catalog

@@ -1,11 +1,10 @@
 # Path to our dtd's for testing.
 #
-XML_CATALOG_FILES=@abs_builddir@/catalog
-export XML_CATALOG_FILES
 
 XMLLINT=@XMLLINT@
+XMLCATALOG=@XMLCATALOG@
 XSLTPROC=@XSLTPROC@
-export XMLLINT XSLTPROC
+export XMLLINT XMLCATALOG XSLTPROC
 
 OCLVP_DATA=@abs_top_srcdir@/share
 export OCLVP_DATA

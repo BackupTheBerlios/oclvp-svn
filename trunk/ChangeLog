@@ -1,3 +1,15 @@
+2005-11-30  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* oclvp.spec.in: Also update the xml catalog in order to locate
+	the suml document type definition.
+
+	* tests/catalog.in, tests/Makefile.am: Do not generate a catalog
+	here.
+
+	* tests/atlocal.in, configure.ac: Check for xmlcatalog.
+
+	* tests/testsuite.at: Build and use a catalog in the test cases.
+
 2005-11-29  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* source/Classifier.mli, source/Classifier.ml: Added interface and
@@ -175,4 +187,3 @@
 
 	* OCL.ml: Started to implement writing trees to XML.  Replaced
 	the tuples oclcontext and oclpackage by structures.
-	

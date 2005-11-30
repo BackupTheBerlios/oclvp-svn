@@ -51,9 +51,24 @@ rm -rf %{buildroot}
 
 %post
 /usr/sbin/install-info %{_infodir}/%{name}.info %{_infodir}/dir
+# Add the dtd to the catalog.
+/usr/bin/xmlcatalog --noout \
+	--add public \
+	'-//Marcel Kyas//DTD suml XML 0.2//EN' \
+	http://oclvp.berlios.de/suml02.dtd \
+/usr/bin/xmlcatalog --noout \
+	--add rewriteURI \
+	http://oclvp.berlios.de/suml02.dtd \
+	file://%{_datadir}/%{name}/suml02.dtd \
+	%{_sysconfdir}/xml/catalog
 
 %preun
 /usr/sbin/install-info --delete %{_infodir}/%{name}.info %{_infodir}/dir
+# Remove the dtd from the catalog.
+/usr/bin/xmlcatalog --noout \
+	--del rewriteURI \
+	http://oclvp.berlios.de/suml02.dtd \
+	%{_sysconfdir}/xml/catalog
 
 %post -n ocaml-xml2
 test -d %{ocamllib} && ( echo %{sitelib}/xml >> %{ocamllib}/ld.conf )

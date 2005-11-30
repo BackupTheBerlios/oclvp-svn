@@ -728,8 +728,13 @@ AT_CHECK([oclvp ${abs_srcdir}/sieve.suml], [0], [], [])
 AT_CLEANUP
 
 AT_SETUP([xslt])
-AT_CHECK([${XSLTPROC} ${abs_top_srcdir}/share/xmi2suml.xsl ${abs_srcdir}/argouml.xmi | ${XMLLINT} --noout --valid -], [0], [], [])
-AT_CHECK([${XSLTPROC} ${abs_top_srcdir}/share/xmi2suml.xsl ${abs_srcdir}/rhapsody.xmi | ${XMLLINT} --noout --valid -], [0], [], [])
+AT_CHECK(xmlcatalog --noout --create catalog, [0], [], [])
+AT_CHECK(xmlcatalog --noout --add public '-//Marcel Kyas//DTD suml XML 0.2//EN' file://${abs_top_srcdir}/share/suml02.dtd catalog, [0], [], [])
+AT_CHECK(xmlcatalog --noout --add rewriteURI http://oclvp.berlios.de/suml02.dtd file://${abs_top_srcdir}/share/suml02.dtd catalog, [0], [], [])
+AT_CHECK([${XSLTPROC} ${abs_top_srcdir}/share/xmi2suml.xsl ${abs_srcdir}/argouml.xmi | env XML_CATALOG_FILES=catalog ${XMLLINT} --noout --nonet --valid -],
+[0], [], [])
+AT_CHECK([${XSLTPROC} ${abs_top_srcdir}/share/xmi2suml.xsl ${abs_srcdir}/rhapsody.xmi | env XML_CATALOG_FILES=catalog ${XMLLINT} --noout --nonet --valid -],
+[0], [], [])
 AT_CLEANUP
 
 AT_SETUP([xmi-parse])
