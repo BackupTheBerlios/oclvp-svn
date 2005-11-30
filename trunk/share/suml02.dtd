@@ -138,13 +138,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
     isnavigable (true|false) #IMPLIED
 >
 
-<!ELEMENT constraint (#PCDATA)>
-<!ATTLIST constraint
-    stereotype CDATA #REQUIRED
-    name CDATA #IMPLIED
-    lang CDATA #REQUIRED
->
-
 <!ELEMENT statemachine (region+)>
 <!ATTLIST statemachine
     name CDATA #IMPLIED
@@ -154,7 +147,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 <!ELEMENT region (state*,transition*)>
 <!ATTLIST region id ID #IMPLIED>
 
-<!ELEMENT state (deferrable*,region*)>
+<!ELEMENT state (constraint*,deferrable*,region*)>
 <!ATTLIST state
     name CDATA #IMPLIED
     id ID #REQUIRED
@@ -187,3 +180,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 <!ATTLIST action
     lang  CDATA #REQUIRED
 >
+
+<!ELEMENT constraint (#PCDATA)>
+<!ATTLIST constraint
+    stereotype CDATA #REQUIRED
+    name CDATA #IMPLIED
+    lang CDATA #REQUIRED
+>
+
