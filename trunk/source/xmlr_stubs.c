@@ -208,6 +208,20 @@ xml_reader_read(value reader)
 /*** current node ***/
 
 CAMLprim value
+xml_reader_get_parser_line_number(value reader)
+{
+	CAMLparam1(reader);
+	int ret;
+
+	ret = xmlTextReaderGetParserLineNumber(XmlReader_val(reader));
+	CAMLreturn(Int_val(ret));
+}
+
+
+
+
+
+CAMLprim value
 xml_reader_nodetype(value reader)
 {
 	CAMLparam1(reader);
@@ -228,8 +242,10 @@ xml_reader_name(value reader)
 {
 	CAMLparam1(reader);
 	const xmlChar *ret;
-	
+
 	ret = xmlTextReaderConstName(XmlReader_val(reader));
+	if (ret == NULL)
+		caml_failwith("xmlTextReaderConstName");
 	CAMLreturn(caml_copy_string((char*) ret));
 }
 

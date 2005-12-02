@@ -222,6 +222,12 @@ external from_string : ?baseurl:string -> ?encoding:string -> ?opts:parser_optio
 external read : xmlreader -> bool = "xml_reader_read"
 external next : xmlreader -> bool = "xml_reader_next"
 
+(** Provide the line number of the current parsing point.
+    @param reader The reader providing the parse context.
+    @return An integer representing the line number or 0 if not available. *)
+external line_number : reader:xmlreader -> int =
+  "xml_reader_get_parser_line_number"
+
 external node_type : xmlreader -> nodetype = "xml_reader_nodetype"
 external prefix : xmlreader -> string = "xml_reader_prefix"
 external local_name : xmlreader -> string = "xml_reader_local_name"

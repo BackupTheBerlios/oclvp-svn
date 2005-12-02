@@ -22,23 +22,32 @@
  *)
 
 let print_node reader =
-  print_endline ((XmlReader.name reader) ^ ": " ^
-		   XmlReader.string_of_nodetype (XmlReader.node_type reader))
+  print_endline
+    ((XmlReader.name reader) ^ ": " ^
+      (XmlReader.string_of_nodetype (XmlReader.node_type reader)) ^
+	" at line " ^ (string_of_int (XmlReader.line_number reader)))
 
 
 
 
 
 let read_constraint reader =
+  (** Read a constraint from the file.
+
+      <!ELEMENT constraint (#PCDATA)>
+      <!ATTLIST constraint stereotype CDATA #REQUIRED
+                           name CDATA #IMPLIED
+                           lang CDATA #REQUIRED> *)
   assert ((XmlReader.name reader = "constraint") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("constraint", XmlReader.EndElement) -> continue := false
-        | (_, XmlReader.Text) -> ()
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("constraint", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.Text) -> continue := XmlReader.read reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -46,15 +55,20 @@ let read_constraint reader =
 
 
 let read_action reader =
+  (* Read an action.
+
+     <!ELEMENT action (#PCDATA)>
+     <!ATTLIST action lang  CDATA #REQUIRED> *)
   assert ((XmlReader.name reader = "action") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("action", XmlReader.EndElement) -> continue := false
-        | (_, XmlReader.Text) -> ()
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+        match (XmlReader.name reader, XmlReader.node_type reader) with
+          | (_, XmlReader.Text) -> continue := XmlReader.read reader
+          | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+          | ("action", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	  | _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -62,15 +76,20 @@ let read_action reader =
 
 
 let read_guard reader =
+  (* Read a guard.
+
+     <!ELEMENT guard (#PCDATA)>
+     <!ATTLIST guard lang CDATA #REQUIRED> *)
   assert ((XmlReader.name reader = "guard") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("guard", XmlReader.EndElement) -> continue := false
-        | (_, XmlReader.Text) -> ()
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("guard", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.Text) -> continue := XmlReader.read reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -78,15 +97,20 @@ let read_guard reader =
 
 
 let read_trigger reader =
+  (* Read a trigger.
+
+     <!ELEMENT trigger EMPTY>
+     <!ATTLIST trigger idref IDREF #REQUIRED> *)
   assert ((XmlReader.name reader = "trigger") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("trigger", XmlReader.EndElement) -> continue := false
-        | (_, XmlReader.Text) -> ()
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+  let trigger = () in
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+        | ("trigger", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -94,18 +118,24 @@ let read_trigger reader =
 
 
 let read_transition reader =
+  (* Read a transition.
+
+     <!ELEMENT transition (trigger*,guard?,action?)>
+     <!ATTLIST transition name CDATA #IMPLIED
+                          source IDREF #REQUIRED
+                          target IDREF #REQUIRED> *)
   assert ((XmlReader.name reader = "transition") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("transition", XmlReader.EndElement) -> continue := false
-        | ("trigger", XmlReader.StartElement) -> read_trigger reader
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("trigger", XmlReader.StartElement) -> read_trigger reader
         | ("guard", XmlReader.StartElement) -> read_guard reader
         | ("action", XmlReader.StartElement) -> read_action reader
-        | (_, XmlReader.Text) -> ()
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+        | ("transition", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -113,14 +143,19 @@ let read_transition reader =
 
 
 let read_deferrable reader =
+  (* Parse a deferrable.
+
+     <!ELEMENT deferrable EMPTY>
+     <!ATTLIST deferrable idref IDREF #REQUIRED> *)
   assert ((XmlReader.name reader = "deferrable") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
       match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("deferrable", XmlReader.EndElement) -> continue := false
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+          ("deferrable", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -128,44 +163,62 @@ let read_deferrable reader =
 
 
 let rec read_region reader =
+  (* Parse a region.
+
+     <!ELEMENT region (state*,transition* )>
+     <!ATTLIST region id ID #IMPLIED> *)
   assert ((XmlReader.name reader = "region") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("region", XmlReader.EndElement) -> continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+        match ((XmlReader.name reader), (XmlReader.node_type reader)) with
+          ("region", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
         | ("state", XmlReader.StartElement) -> read_state reader
         | ("transition", XmlReader.StartElement) -> read_transition reader
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 and read_state reader =
+  (* Parse a state.
+
+     <!ELEMENT state (constraint*,deferrable*,region* )>
+     <!ATTLIST state name CDATA #IMPLIED
+                     id ID #REQUIRED
+                     kind (normal|initial) "normal"> *)
   assert ((XmlReader.name reader = "state") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("state", XmlReader.EndElement) -> continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("state", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
         | ("constraint", XmlReader.StartElement) -> read_constraint reader
         | ("deferrable", XmlReader.StartElement) -> read_deferrable reader
-        | ("region", XmlReader.StartElement) -> continue := false
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+        | ("region", XmlReader.StartElement) -> read_region reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
 
 
 let read_statemachine reader =
+  (* Parse a state machine.
+
+     <!ELEMENT statemachine (region+)>
+     <!ATTLIST statemachine name CDATA #IMPLIED
+                            id ID #IMPLIED> *)
   assert ((XmlReader.name reader = "statemachine") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("statemachine", XmlReader.EndElement) -> continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("statemachine", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
         | ("region", XmlReader.StartElement) -> read_region reader
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if this is an error. *)
     done
 
 
@@ -173,46 +226,108 @@ let read_statemachine reader =
 
 
 let read_associationend reader =
+  (* Parse an association end.
+
+     <!ELEMENT associationend EMPTY>
+     <!ATTLIST associationend name CDATA #IMPLIED
+                              class CDATA #REQUIRED
+                              aggregation (none|aggregate|composite) "none"
+                              isnavigable (true|false) #IMPLIED> *)
   assert ((XmlReader.name reader = "associationend") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("associationend", XmlReader.EndElement) -> continue := false
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("associationend", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
     done
 
 
 
 
 let read_association reader =
+  (* Read an association.
+
+     <!ELEMENT association (associationend,associationend)>
+     <!ATTLIST association name CDATA #IMPLIED
+                           export (yes|no) "yes"> *)
   assert ((XmlReader.name reader = "association") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while XmlReader.read reader do
-      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
-          ("association", XmlReader.EndElement) -> continue := false
-        | ("associationend", XmlReader.StartElement) ->
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("associationend", XmlReader.StartElement) ->
 	    read_associationend reader
-        | (_, XmlReader.SigWhitespace) -> ()
-	| _ -> continue := false; print_node reader
+        | ("association", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
     done
 
 
 
 
 
-let read_attribute reader model =
-  assert ((XmlReader.name reader = "attribute") &&
+let read_generalization reader =
+  (* Read an generalization.
+
+     <!ELEMENT generalization EMPTY>
+     <!ATTLIST association parent ID #REQUIRED
+                           child ID #REQUIRED
+                           export (yes|no) "yes"> *)
+  assert ((XmlReader.name reader = "generalization") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-	match (XmlReader.name reader, XmlReader.node_type reader) with
-	    ("initializer", XmlReader.StartElement) -> ()
-	  | ("attribute", XmlReader.EndElement) -> continue := false
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> continue := false; print_node reader
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match ((XmlReader.name reader), (XmlReader.node_type reader)) with
+          ("generalization", XmlReader.EndElement) ->
+	    ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
+    done
+
+
+
+
+
+let read_initializer reader =
+  (** Read an implementation from the file.
+
+      <!ELEMENT implementation (#PCDATA)>
+      <!ATTLIST implementation lang CDATA #REQUIRED> *)
+  assert ((XmlReader.name reader = "initializer") &&
+    (XmlReader.node_type reader = XmlReader.StartElement));
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          (_, XmlReader.Text) -> continue := XmlReader.read reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+        | ("initializer", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	| _ -> continue := false (* Caller decides if there is an error. *)
+    done
+
+
+
+
+
+let read_implementation reader =
+  (** Read an implementation from the file.
+
+      <!ELEMENT implementation (#PCDATA)>
+      <!ATTLIST implementation lang CDATA #REQUIRED> *)
+  assert ((XmlReader.name reader = "implementation") &&
+    (XmlReader.node_type reader = XmlReader.StartElement));
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          (_, XmlReader.Text) -> continue := XmlReader.read reader
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+        | ("implementation", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	| _ -> continue := false (* Caller decides if there is an error. *)
     done
 
 
@@ -220,37 +335,20 @@ let read_attribute reader model =
 
 
 let read_parameter reader =
+  (* Read a parameter.
+
+     <!ELEMENT parameter EMPTY>
+     <!ATTLIST parameter name CDATA #REQUIRED
+                         type CDATA #REQUIRED> *)
   assert ((XmlReader.name reader = "parameter") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	    ("parameter", XmlReader.EndElement) -> ()
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> continue := false; print_node reader
-    done
-
-
-
-
-
-let read_operation reader model =
-  assert ((XmlReader.name reader = "operation") &&
-    (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	    ("parameter", XmlReader.StartElement) -> read_parameter reader
-	  | ("constraint", XmlReader.StartElement) -> ()
-	  | ("implementation", XmlReader.StartElement) -> ()
-	  | ("operation", XmlReader.EndElement) -> continue := false
-	  | ("class", XmlReader.EndElement) -> continue := false
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> print_node reader; continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("parameter", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
     done
 
 
@@ -260,17 +358,62 @@ let read_operation reader model =
 let read_reception reader model =
   assert ((XmlReader.name reader = "reception") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	  | ("parameter", XmlReader.StartElement) -> ()
-	  | ("constraint", XmlReader.StartElement) -> ()
-	  | ("reception", XmlReader.EndElement) -> continue := false
-	  | ("class", XmlReader.EndElement) -> continue := false
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> print_node reader; continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+          ("parameter", XmlReader.StartElement) ->
+            read_parameter reader
+        | ("constraint", XmlReader.StartElement) ->
+            read_constraint reader
+        | ("reception", XmlReader.EndElement) ->
+              ignore (XmlReader.read reader); continue := false
+        | (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
+      done
+
+
+
+
+
+let read_operation reader model =
+  assert ((XmlReader.name reader = "operation") &&
+    (XmlReader.node_type reader = XmlReader.StartElement));
+  let continue = ref (XmlReader.read reader) in
+    while !continue; do 
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("parameter", XmlReader.StartElement) ->
+            read_parameter reader
+	| ("constraint", XmlReader.StartElement) ->
+            read_constraint reader
+	| ("implementation", XmlReader.StartElement) ->
+            read_implementation reader
+	| ("operation", XmlReader.EndElement) -> 
+            ignore (XmlReader.read reader); continue := false
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
+    done
+
+
+
+
+
+let read_attribute reader model =
+  (* Read an attribute.
+
+     <!ELEMENT attribute (initializer?)>
+     <!ATTLIST attribute name CDATA #REQUIRED
+                         type CDATA #REQUIRED
+                         export (yes|no) "yes"> *)
+  assert ((XmlReader.name reader = "attribute") &&
+    (XmlReader.node_type reader = XmlReader.StartElement));
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("initializer", XmlReader.StartElement) -> read_initializer reader
+	| ("attribute", XmlReader.EndElement) ->
+	    ignore (XmlReader.read reader); continue := false
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
     done
 
 
@@ -280,24 +423,31 @@ let read_reception reader model =
 let read_class reader model =
   assert ((XmlReader.name reader = "class") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	    ("template", XmlReader.StartElement) -> ()
-	  | ("bind", XmlReader.StartElement) -> ()
-	  | ("extends", XmlReader.StartElement) -> ()
-	  | ("attribute", XmlReader.StartElement) ->
-	      read_attribute reader model
-	  | ("operation", XmlReader.StartElement) ->
-	      read_operation reader model
-	  | ("association", XmlReader.StartElement) -> ()
-	  | ("constraint", XmlReader.StartElement) -> ()
-	  | ("statemachine", XmlReader.StartElement) -> ()
-	  | ("class", XmlReader.EndElement) -> continue := false
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> print_node reader; continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("template", XmlReader.StartElement) ->
+	    assert false
+	| ("bind", XmlReader.StartElement) ->
+	    assert false
+	| ("extends", XmlReader.StartElement) ->
+	    assert false
+	| ("attribute", XmlReader.StartElement) ->
+	    read_attribute reader model
+	| ("operation", XmlReader.StartElement) ->
+	    read_operation reader model
+	| ("reception", XmlReader.StartElement) ->
+	    read_reception reader model
+	| ("associationend", XmlReader.StartElement) ->
+	    read_associationend reader
+	| ("constraint", XmlReader.StartElement) ->
+	    read_constraint reader
+	| ("statemachine", XmlReader.StartElement) ->
+	    read_statemachine reader
+	| ("class", XmlReader.EndElement) ->
+	    ignore (XmlReader.read reader); continue := false
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> continue := false (* Caller decides if there is an error. *)
     done
 
 
@@ -307,18 +457,21 @@ let read_class reader model =
 let rec read_package reader model =
   assert ((XmlReader.name reader = "package") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	    ("package", XmlReader.StartElement) -> read_package reader model
-	  | ("class", XmlReader.StartElement) -> read_class reader model
-	  | ("association", XmlReader.StartElement) -> ()
-	  | ("generalisation", XmlReader.StartElement) -> ()
-	  | ("package", XmlReader.EndElement) -> continue := false
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> print_node reader; continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue  do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("package", XmlReader.StartElement) ->
+	    read_package reader model
+	| ("class", XmlReader.StartElement) ->
+	    read_class reader model
+	| ("association", XmlReader.StartElement) ->
+	    read_association reader
+	| ("generalization", XmlReader.StartElement) ->
+	    read_generalization reader
+	| ("package", XmlReader.EndElement) ->
+	    ignore (XmlReader.read reader); continue := false
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> print_node reader; exit 1
     done
 
 
@@ -328,16 +481,17 @@ let rec read_package reader model =
 let read_head reader model =
   assert ((XmlReader.name reader = "head") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match name with
-	    "meta" when node_type = XmlReader.StartElement -> ()
-	  | "head" when node_type = XmlReader.EndElement -> continue := false
-	  | "suml" when node_type = XmlReader.EndElement -> continue := false
-	  | _ when node_type = XmlReader.SigWhitespace -> ()
-	  | _ -> print_node reader; continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("meta", XmlReader.StartElement) ->
+            continue := XmlReader.read reader
+	| ("meta", XmlReader.EndElement) -> continue := XmlReader.read reader
+	| ("head", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	| ("suml", XmlReader.EndElement) -> continue := false
+	| (_, XmlReader.SigWhitespace) ->  continue := XmlReader.read reader
+	| _ -> print_node reader; exit 1
     done
 
 
@@ -347,41 +501,23 @@ let read_head reader model =
 let read_model reader model =
   assert ((XmlReader.name reader = "suml") &&
     (XmlReader.node_type reader = XmlReader.StartElement));
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	    ("head", XmlReader.StartElement) -> read_head reader model
-	  | ("package", XmlReader.StartElement) -> read_package reader model
-	  | ("class", XmlReader.StartElement) -> read_class reader model
-	  | ("association", XmlReader.StartElement) -> ()
-	  | ("generalization", XmlReader.StartElement) -> ()
-	  | ("suml", XmlReader.EndElement) -> continue := false
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> print_node reader; continue := false
-    done
-
-
-
-
-
-let read_document reader model =
-  let continue = ref true in
-    while !continue && XmlReader.read reader do
-      let name = XmlReader.name reader in
-      let node_type = XmlReader.node_type reader in
-	match (name, node_type) with
-	    ("suml", XmlReader.StartElement) ->
-	      begin
-		match XmlReader.get_attribute reader "version" with
-                    "0.2" -> read_model reader model
-		  | _ -> print_node reader; continue := false
-	      end
-	  | ("suml", XmlReader.EndElement) -> ()
-	  | ("suml", XmlReader.Doctype) -> ()
-	  | (_, XmlReader.SigWhitespace) -> ()
-	  | _ -> print_node reader; continue := false
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("head", XmlReader.StartElement) ->
+            read_head reader model
+	| ("package", XmlReader.StartElement) ->
+            read_package reader model
+	| ("class", XmlReader.StartElement) ->
+            read_class reader model
+	| ("association", XmlReader.StartElement) ->
+            read_association reader
+	| ("generalization", XmlReader.StartElement) ->
+            read_generalization reader
+	| ("suml", XmlReader.EndElement) ->
+            ignore (XmlReader.read reader); continue := false
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader
+	| _ -> print_node reader; exit 1
     done
 
 
@@ -390,5 +526,19 @@ let read_document reader model =
 
 let from_file name =
   let model = Model.create name in
-    read_document (XmlReader.from_filename name) model;
+  let reader = XmlReader.from_filename name in
+  let continue = ref (XmlReader.read reader) in
+    while !continue do
+      match (XmlReader.name reader, XmlReader.node_type reader) with
+	  ("suml", XmlReader.StartElement) ->
+              begin
+                match XmlReader.get_attribute reader "version" with
+                   "0.2" -> read_model reader model
+                  | _ -> print_node reader; exit 1
+              end;
+              continue := false
+	| ("suml", XmlReader.Doctype) -> continue := XmlReader.read reader
+	| (_, XmlReader.SigWhitespace) -> continue := XmlReader.read reader 
+	| _ -> print_node reader; exit 1
+    done;
     model

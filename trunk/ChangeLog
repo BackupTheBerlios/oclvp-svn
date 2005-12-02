@@ -1,3 +1,13 @@
+2005-12-02  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* source/SUML.ml: Rewrote most parts such that we advance the
+	cursor more lazily.  Now the test cases pass, but the parser does
+	not yet do anything useful :-(
+
+	* source/XmlReader.ml, source/xmlr_stubs.c: Corrected an error
+	where a program could segfault in XmlReader.name; now we raise an
+	exception.  Bind xmlTextReaderGetParserLineNumber.
+
 2005-11-30  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* oclvp.spec.in: Also update the xml catalog in order to locate
