@@ -26,3 +26,9 @@ SOURCES	= suml02.dtd cauifilogo.png ist-logo.png mwcts.png valid-css.png \
 
 all:
 	for i in $(SOURCES) ; do scp $$i $(user)@$(host):$(htmldir)/$$i && ssh $(user)@$(host) chmod 0664 $(htmldir)/$$i ; done
+
+merge:
+	svn merge \
+	  svn+ssh://svn.berlios.de/svnroot/repos/oclvp/htdocs/suml02.dtd \
+	  svn+ssh://svn.berlios.de/svnroot/repos/oclvp/trunk/share/suml02.dtd \
+	  suml02.dtd
