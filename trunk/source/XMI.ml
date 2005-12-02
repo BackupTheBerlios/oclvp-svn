@@ -21,8 +21,6 @@
  * 02111-1307, USA.
  *)
 
-open XmlReader;;
-
 let stylesheet =
   let name = "xmi2suml.xsl" in
     if Sys.file_exists name

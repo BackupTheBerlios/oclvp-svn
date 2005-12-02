@@ -23,5 +23,9 @@
 
 (** Read an SUML document *)
 
-(** Read an SUML document from a file. *)
-val from_file: string -> Model.model
+(** Read an SUML document from a file.
+
+    @param name The name of the file from which the model is to be read.
+
+    @return The parsed model. *)
+val from_file : name: string -> Model.model

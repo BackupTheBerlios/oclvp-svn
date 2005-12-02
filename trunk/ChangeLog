@@ -1,5 +1,21 @@
 2005-12-02  Marcel Kyas  <mkyas@users.berlios.de>
 
+	* share/suml02.dtd: Boolean attributes only use true or false and
+	not yes or no.  Parameters may have a direction now.
+
+	* source/XmlReader.ml, source/XmlTextReader.ml,
+	source/Makefile.am: Renamed the module to match the name of the C#
+	spec.
+
+	* source/SUML.ml: Extract all attributes defined for a node.
+
+	* source/SUML.mli: Updated documentation.
+
+	* source/Classifier.ml, source/Classifier.mli: Added a definition
+	of attribute.
+
+	* source/XMI.ml:  Do not depend on XmlTextReader.
+
 	* source/SUML.ml: Rewrote most parts such that we advance the
 	cursor more lazily.  Now the test cases pass, but the parser does
 	not yet do anything useful :-(

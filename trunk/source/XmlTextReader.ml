@@ -1,5 +1,5 @@
 (*
- * XmlReader.ml -- OCaml bindings for libxml's XmlTextReader.
+ * XmlTextReader.ml -- OCaml bindings for libxml's XmlTextReader.
  *
  * This file is part of oclvp
  *
@@ -30,7 +30,7 @@
     stream of XML data. This class enforces the rules of well-formed XML
     but does not perform data validation.
 
-    The API is modelled after the XmlReader class of C# and conforms to
+    The API is modelled after the XmlTextReader class of C# and conforms to
     the W3C Extensible Markup Language (XML) 1.0 and the Namespaces in XML
     recommendations.
 
@@ -86,7 +86,7 @@ type xmlreader
 
 type nodetype =
     NodeTypeNone
-      (** This is returned by the XmlReader if a read method has not been
+      (** This is returned by the XmlTextReader if a read method has not been
           called or if no more nodes are available to be read. *)
   | StartElement
       (** An element, more precisely the start of an element.
@@ -180,7 +180,7 @@ type nodetype =
 
            Example XML: </name>
 
-           Returned when XmlReader gets to the end of an element. *)
+           Returned when XmlTextReader gets to the end of an element. *)
   | EndEntity
       (** An entity declaration.
 
@@ -235,6 +235,12 @@ external name : xmlreader -> string = "xml_reader_name"
 external namespace_uri : xmlreader -> string = "xml_reader_namespace_uri"
 
 external has_value : xmlreader -> bool = "xml_reader_has_value"
+
+(** Obtain the value of the current node.
+
+    @param reader The reader.
+
+    @return The value. *)
 external value : xmlreader -> string = "xml_reader_value"
 
 external base_uri : xmlreader -> string = "xml_reader_base_uri"
@@ -244,7 +250,7 @@ external depth : xmlreader -> int = "xml_reader_depth"
 
 (* XXX doesn't work--unimplemented in libxml itself.
 (** Reads the contents of the current node, including child nodes and markup.
-    Returns a string containing the XML content. *)
+   Returns a string containing the XML content. *)
 external inner_xml : xmlreader -> string = "xml_reader_inner_xml"
 external outer_xml : xmlreader -> string = "xml_reader_outer_xml"
 *)

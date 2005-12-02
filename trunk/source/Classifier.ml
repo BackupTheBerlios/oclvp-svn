@@ -23,6 +23,11 @@
 
 type classifier = { classifier_name: string }
 
+type attribute = {
+  attributename: string;
+  attributetype: string
+}
+
 let name cls = cls.classifier_name
 
 let create name =

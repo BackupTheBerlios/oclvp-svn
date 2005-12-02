@@ -21,10 +21,16 @@
  * 02111-1307, USA.
  *)
 
-(** Definition of a package. *)
+(** Definition of a classifier. *)
 
-(** The type of a package. *)
+(** The type of a classifier. *)
 type classifier
+
+(** The type of an attribute. *)
+type attribute = {
+  attributename: string;
+  attributetype: string
+}
 
 (** Create a new, empty classifier. *)
 val create: string -> classifier

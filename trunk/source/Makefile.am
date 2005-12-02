@@ -44,7 +44,7 @@ noinst_LIBRARIES	= libxml_stubs.a
 
 libxml_stubs_a_SOURCES	= xml_helpers.c xml_helpers.h xmld_stubs.c \
 			  xmlr_stubs.c xmlw_stubs.c xslt_stubs.c \
-			  Xml.ml XmlReader.ml XmlWriter.ml Xslt.ml
+			  Xml.ml XmlTextReader.ml XmlWriter.ml Xslt.ml
 AM_CPPFLAGS		= $(XML_CPPFLAGS) $(XSLT_CPPFLAGS) -I`ocamlc -where` \
 			  -DCAML_NAME_SPACE
 AM_CFLAGS		= -Wall -Wno-unused -Werror
@@ -121,7 +121,8 @@ ocamldoc: oclvp.dump
 
 ocamlweb: oclvp.pdf
 
-oclvp.dump: $(oclvp_SOURCES) $(filter %.ml, $(libxml_stubs_a_SOURCES))
+oclvp.dump: $(oclvp_SOURCES) $(filter %.ml, $(libxml_stubs_a_SOURCES)) \
+	$(filter %.mli, $(libxml_stubs_a_SOURCES))
 	test -d html || mkdir html
 	$(OCAMLDOC) -html -d html -dump $@ -all-params $^
 
@@ -134,13 +135,11 @@ oclvp.tex: $(oclvp_SOURCES)
 distclean-local:
 	test ! -d html || rm -rf html
 
-install-exec-local: META xml.cma xml.cmxa libxml.a dllxml.so xml.a
+install-exec-local: META xml.cma xml.cmxa libxml.a dllxml.so xml.a \
+	$(filter %.ml, $(libxml_stubs_a_SOURCES)) \
+	$(filter %.mli, $(libxml_stubs_a_SOURCES))
 	mkdir -p $(DESTDIR)$(OCAML_SITELIB)
-	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) \
-			     -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf \
-		xml META xml.cma xml.cmxa libxml.a dllxml.so xml.a \
-		$(srcdir)/XmlReader.ml $(srcdir)/XmlWriter.ml \
-		$(srcdir)/Xslt.ml
+	$(OCAMLFIND) install -destdir $(DESTDIR)$(OCAML_SITELIB) -ldconf $(DESTDIR)$(OCAML_LIBDIR)/ld.conf xml $^
 
 uninstall-local:
 	$(OCAMLFIND) remove -destdir $(DESTDIR)$(OCAML_SITELIB) \
@@ -150,6 +149,6 @@ uninstall-local:
 oclvp: xml.cma
 oclvp.opt: xml.cmxa
 
-XmlReader.cmi XmlWriter.cmi: META
+XmlTextReader.cmi XmlTextWriter.cmi: META
 
 -include ${srcdir}/depend
