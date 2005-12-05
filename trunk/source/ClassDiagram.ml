@@ -21,14 +21,79 @@
  * 02111-1307, USA.
  *)
 
-type classifier = {
-    name: string;
-    attributes: (string, string) Hashtbl.t;
-    operations: (string, string list) Hashtbl.t
-};;
+(** Implementation of the abstract syntax of attributes. *)
+module Attribute =
+  struct
+    type init_t =
+	None
+      | Opaque of string * string option * string
+      | OclExpression of string option * OCL.oclast
 
-let create n = {
-    name = n;
-    attributes = Hashtbl.create 16;
-    operations = Hashtbl.create 16
-};;
+    type t = { name: string; typespec: string; init: init_t }
+
+    let create n t i = {name = n; typespec = t; init = i; }
+
+    let name a = a.name
+
+    let typespec a = a.typespec
+
+    let init a = a.init
+
+  end
+
+
+
+
+
+module Parameter =
+  struct
+
+    type dir_t =
+	In
+      | Out
+      | InOut
+
+    type t = {
+      name: string;
+      dir: dir_t;
+      typespec: string;
+    }
+
+    let create n d t = { name = n; dir = d; typespec = t; }
+
+  end
+
+module Operation =
+  struct
+
+    type t = { name: string;
+	       params: Parameter.t list; }
+
+    let create n p = { name = n; params = p; }
+
+  end
+
+module Classifier =
+  struct
+
+    type t = {
+      name: string;
+      attributes: (string, Attribute.t) Hashtbl.t;
+      operations: (string, string list) Hashtbl.t
+    }
+
+    let create n = {
+      name = n;
+      attributes = Hashtbl.create 7;
+      operations = Hashtbl.create 7
+    }
+
+    let name c = c.name
+
+    let add_attribute c a =
+      try
+	let t = Hashtbl.find c.attributes a.Attribute.name in
+	  assert false
+      with
+	  Not_found -> Hashtbl.add c.attributes a.Attribute.name a
+  end

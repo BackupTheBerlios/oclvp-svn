@@ -20,78 +20,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *)
-
+ 
 (* Abstract syntax of OCL. *)
 
-open ObjectDiagram;;
-open XmlWriter;;
-
-
-
-
-
-(** Define a type specification as they occur in our extended
-    type checker  *)
-type
-  ocltypespec =
-    TypeError (** Indicates a type checking error *)
-  | Name of string (** A simple type name, e.g. Integer, Boolean, ... *)
-  | Application of string * ocltypespec (** The application of an ocltypespec
-                            to the parameterized type described by string *)
-  | Variable of string (** A type variable *)
-  | Union of ocltypespec list (** A union type *)
-  | Intersection of ocltypespec list (** An intersection type *)
-  ;;
-
-
-let rec prettyprint_typespec t =
-  match t with
-      Name n -> n
-    | Application (n, t) -> n ^ "(" ^ (prettyprint_typespec t) ^ ")"
-    | Variable v -> "$" ^ v
-    | Union l -> (prettyprint_union " ++ " l)
-    | Intersection l -> (prettyprint_union " ** " l)
-    | _ -> assert false
-and prettyprint_union oper l =
-  match l with
-      [] -> assert false
-    | a::[] -> (prettyprint_typespec a)
-    | t::r -> (prettyprint_typespec t) ^ oper ^ (prettyprint_union oper r)
-
-
-
-
-
-
-let rec typespec_to_xml writer t =
-  match t with
-      Name n ->
-	start_element writer "type";
-	write_attribute writer "name" n;
-	end_element writer
-    | Application (n, r) ->
-	start_element writer "typeapplication";
-	write_attribute writer "name" n;
-	typespec_to_xml writer r;
-	end_element writer
-    | Variable v ->
-	start_element writer "typevariable";
-	write_attribute writer "name" v;
-	end_element writer
-    | Union l ->
-	start_element writer "typeunion";
-	typespec_list_to_xml writer l;
-	end_element writer
-    | Intersection l ->
-	start_element writer "typeintersection";
-	typespec_list_to_xml writer l;
-	end_element writer
-    | _ -> assert false
-and typespec_list_to_xml writer l =
-  match l with
-      [t] -> typespec_to_xml writer t
-    | t::r -> typespec_to_xml writer t; typespec_list_to_xml writer r
-    | _ -> assert false
+open ObjectDiagram
+open XmlTextWriter
+open Lexer
 
 
 
@@ -119,12 +53,12 @@ type oclast =
     | Iterate of oclast * string * oclvardecl list * oclvardecl option * oclast
     | MessageExpr of oclast * string * oclast list
     | MessageSequenceExpr of oclast * string * oclast list
-    | Wildcard of ocltypespec option
+    | Wildcard of Type.t option
     | Let of oclvardecl list * oclast
     | Self
     | Error
   and
-    oclvardecl = { varname: string; typespec: ocltypespec option;
+    oclvardecl = { varname: string; typespec: Type.t option;
 		   init: oclast option }
 
 
@@ -169,7 +103,7 @@ let rec prettyprint tree =
     | MessageSequenceExpr (r, n, a) ->
 	(prettyprint r) ^ "^^" ^ n ^ "(" ^ (prettyprint_args a) ^ ")"
     | Wildcard None -> "?"
-    | Wildcard Some t -> "?: " ^ (prettyprint_typespec t)
+    | Wildcard Some t -> "?: " ^ (Type.prettyprint_typespec t)
     | Let (v, i) -> "let " ^ (prettyprint_decls v) ^ " in " ^ (prettyprint i)
     | Self -> "self"
     | Error -> assert false
@@ -190,9 +124,9 @@ and prettyprint_decl d =
     | { varname = name; typespec = None; init = Some i } ->
 	name ^ " = " ^ (prettyprint i)
     | { varname = name; typespec = Some t; init = None } ->
-	name ^ ": " ^ (prettyprint_typespec t)
+	name ^ ": " ^ (Type.prettyprint_typespec t)
     | { varname = name; typespec = Some t; init = Some i } ->
-	name ^ ": " ^ (prettyprint_typespec t) ^ " = " ^ (prettyprint i)
+	name ^ ": " ^ (Type.prettyprint_typespec t) ^ " = " ^ (prettyprint i)
 
 
 
@@ -308,7 +242,7 @@ let rec expression_to_xml writer expr =
 	end_element writer;
     | Wildcard Some t ->
 	start_element writer "wildcard";
-	typespec_to_xml writer t;
+	Type.typespec_to_xml writer t;
 	end_element writer;
     | Let (v, i) ->
 	start_element writer "let";
@@ -345,50 +279,51 @@ and vardecl_to_xml writer decl =
     class in the class diagram or a data type name.  *)
 let rec ocltypechecker cd env (expression: oclast) =
   match expression with
-  | BooleanLiteral b -> Name "Boolean"
-  | IntegerLiteral i -> Name "Integer"
-  | RealLiteral f -> Name "Real"
-  | StringLiteral s -> Name "String"
-  | Identifier i -> env i
-  | Collection (n, e) ->
-      Application (n, Union (List.map (ocltypechecker cd env) e))
-  | If (c, e, f) ->
+    | BooleanLiteral b -> Type.Simple "Boolean"
+    | IntegerLiteral i -> Type.Simple "Integer"
+    | RealLiteral f -> Type.Simple "Real"
+    | StringLiteral s -> Type.Simple "String"
+    | Identifier i -> env i
+    | Collection (n, e) ->
+	Type.Application (Type.Simple n,
+			  Type.Union (List.map (ocltypechecker cd env) e))
+    | If (c, e, f) ->
         (match ocltypechecker cd env c with
-             Name "Boolean" -> Union [
-                 ocltypechecker cd env e;
-                 ocltypechecker cd env f]
-           | _ -> TypeError)
-  | AttributeCall (c, n, _) ->
-      let ct = ocltypechecker cd env c
-      in
-      TypeError (* fetch () n *)
-  | OperationCall (Identifier i, "allInstances", _, []) ->
+             Type.Simple "Boolean" -> Type.Union [
+               ocltypechecker cd env e;
+               ocltypechecker cd env f]
+           | _ -> Type.Untyped)
+    | AttributeCall (c, n, _) ->
+	let ct = ocltypechecker cd env c
+	in
+	  Type.Untyped (* fetch () n *)
+    | OperationCall (Identifier i, "allInstances", _, []) ->
         if true (* i is a type name *) then
-            (Application ("Set", (Name i)))
+          (Type.Application (Type.Simple "Set", (Type.Simple i)))
         else
-            TypeError
-  | OperationCall (callee, "flatten", _, []) ->
-      let calleetype = ocltypechecker cd env callee
-      in ( match calleetype with
-               Application (n1, Application(n2, t2)) -> Application (n1, t2)
-             | t -> t )
-  | OperationCall (callee, name, _, args) ->
+          Type.Untyped
+    | OperationCall (callee, "flatten", _, []) ->
+	let calleetype = ocltypechecker cd env callee
+	in ( match calleetype with
+		 Type.Application (n1, Type.Application(n2, t2)) ->
+		   Type.Application (n1, t2)
+               | t -> t )
+    | OperationCall (callee, name, _, args) ->
         let calleetype = ocltypechecker cd env callee
         and argstype = List.map (ocltypechecker cd env) args
         in (match calleetype with
-                TypeError -> TypeError
-              | Application (n, a) ->
+		Type.Application (n, a) ->
                   (* Here we have the map semantics. *)
-                  Application (n, TypeError)
-              | t -> TypeError )
-                  (* Here we have the normal call semantics. *)
-  | CollectionCall(c, n, a) -> TypeError
-  | Iterate (c, n, d, a, e) ->
+                  Type.Application (n, Type.Untyped)
+              | t -> Type.Untyped )
+             (* Here we have the normal call semantics. *)
+    | CollectionCall(c, n, a) -> Type.Untyped
+    | Iterate (c, n, d, a, e) ->
         let ct = ocltypechecker cd env c
         in ocltypechecker cd ((* XXX: update *) env) e
-  | Error -> TypeError
-  | _ -> assert false
-  ;;
+    | Error -> Type.Untyped
+    | _ -> assert false
+;;
 
 
 
@@ -437,350 +372,6 @@ let rec oclinterpreter cd cs ps env expr = ()
    checker will rewrite the abstract syntax tree generated by the parser
    and return a corrected and type-annotated syntax tree.  *)
 
-(** The tokens returned by the lexer.  If the token has a semantic
-    value, then it is the first component of the constructor.  The last
-    one, an integer, refers to the line number of the token. *)
-type ocltoken =
-    Keyword of string * int
-  | Id of string * int
-  | Int of int * int
-  | Float of float * int
-  | Str of string * int
-  | Bang of int
-  | Quote of int
-  | Hash of int
-  | Dollar of int
-  | Percent of int
-  | Ampersand of int
-  | LParen of int
-  | RParen of int
-  | Mult of int
-  | Plus of int
-  | Comma of int
-  | Minus of int
-  | Arrow of int
-  | Dot of int
-  | DotDot of int
-  | Div of int
-  | Colon of int
-  | DoubleColon of int
-  | Assign of int
-  | Semicolon of int
-  | Less of int
-  | LessEq of int
-  | NotEq of int
-  | Equals of int
-  | Greater of int
-  | GreaterEq of int
-  | Question of int
-  | At of int
-  | LBracket of int
-  | RBracket of int
-  | Hat of int
-  | HatHat of int
-  | LBrace of int
-  | Bar of int
-  | RBrace of int
-  | Tilde of int
-
-
-
-
-
-(** Extract the line of a token. *)
-let get_token_line =
-  function
-      Keyword (_, line) | Id (_, line) | Int (_, line) | Float (_, line)
-    | Str (_, line) | Bang line | Quote line | Hash line | Dollar line
-    | Percent line | Ampersand line | LParen line | RParen line | Mult line
-    | Plus line | Comma line | Minus line | Arrow line | Dot line
-    | DotDot line | Div line | Colon line | DoubleColon line | Assign line
-    | Semicolon line | Less line | LessEq line | NotEq line | Equals line
-    | Greater line | GreaterEq line | Question line | At line | LBracket line
-    | RBracket line | Hat line | HatHat line | LBrace line | Bar line
-    | RBrace line | Tilde line -> line
-
-
-
-
-
-(** Return a string representing the kind of the token and its
-    semantic value if applicable. *)
-let get_token_name =
-  function
-      Keyword (name, _) -> "<<keyword: " ^ name ^ ">>"
-    | Id (name, _) -> "<<identifier: " ^ name ^ ">>"
-    | Int (i, _) -> "<<integer: " ^ (string_of_int i) ^ ">>"
-    | Float (f, _) -> "<<real: " ^ (string_of_float f) ^ ">>"
-    | Str (s, _) -> "<<string: '" ^ s ^ "'>>"
-    | Bang _ -> "!"
-    | Quote _ -> "\""
-    | Hash _ -> "#"
-    | Dollar _ -> "$"
-    | Percent _ -> "%"
-    | Ampersand _ -> "&"
-    | LParen _ -> "("
-    | RParen _ -> ")"
-    | Mult _ -> "*"
-    | Plus _ -> "+"
-    | Comma _ -> ","
-    | Minus _ -> "-"
-    | Arrow _ -> "->"
-    | Dot _ -> "."
-    | DotDot _ -> ".."
-    | Div _ -> "/"
-    | Colon _ -> ":"
-    | DoubleColon _ -> "::"
-    | Assign _ -> ":="
-    | Semicolon _ -> ";"
-    | Less _ -> "<"
-    | LessEq _ -> "<="
-    | NotEq _ -> "<>"
-    | Equals _ -> "="
-    | Greater _ -> ">"
-    | GreaterEq _ -> ">="
-    | Question _ -> "?"
-    | At _ -> "@"
-    | LBracket _ -> "["
-    | RBracket _ -> "]"
-    | Hat _ -> "^"
-    | HatHat _ -> "^^"
-    | LBrace _ -> "{"
-    | Bar _ -> "|"
-    | RBrace _ -> "}"
-    | Tilde _ -> "~"
-
-
-
-
-(** Exception raised when the lexer or parser encounters the end of
-    a file in an unexprected place.  The string argument described the
-    place where the end of file has been encountered. *)
-exception Eof of string
-
-
-
-
-
-
-(** Create a lexer for OCL.
-
-    The lexer turns a stream of characters (as obtained from a string or
-    file) into a stream of tokens.
-
-    The tokenizer filters out all comments.  *)
-let lexer input =
-  let line = ref 0 in
-  let initial_buffer = String.create 256 in
-  let buffer = ref initial_buffer in
-  let bufpos = ref 0 in
-  let reset_buffer () = buffer := initial_buffer; bufpos := 0 in
-  let store c =
-    if !bufpos >= String.length !buffer then
-      begin
-	let newbuffer = String.create (2 * !bufpos)
-	in
-	  String.blit !buffer 0 newbuffer 0 !bufpos;
-	  buffer := newbuffer
-      end;
-    String.set !buffer !bufpos c;
-    incr bufpos in
-  let get_string () =
-    let s = String.sub !buffer 0 !bufpos in buffer := initial_buffer; s in
-  let keyword_table = Hashtbl.create 29 in
-    List.iter (fun s -> Hashtbl.add keyword_table s s)
-      [ "and"; "context"; "def"; "derive"; "else"; "endif"; "endpackage";
-	"false"; "if"; "implies"; "init"; "inv"; "in"; "let";
-	"not"; "or"; "package"; "post"; "pre"; "then"; "true"; "xor" ];
-    let identifier_or_keyword id =
-      try Some (Keyword ((Hashtbl.find keyword_table id), !line))
-      with Not_found -> Some (Id (id, !line))
-    in
-    let rec next_token stream =
-      match Stream.peek stream with
-	  Some (' ' | '\009' | '\026' | '\012') ->
-	    Stream.junk stream; next_token stream
-	| Some ( '\013' | '\010' ) ->
-	    Stream.junk stream; incr line; next_token stream 
-	| Some ('A'..'Z' | 'a'..'z' | '_' | '\192'..'\255' as c) ->
-	    Stream.junk stream; reset_buffer (); store c;
-	    parse_identifier_or_keyword stream
-	| Some ('0'..'9' as c) ->
-	    Stream.junk stream; reset_buffer (); store c; parse_number stream
-	| Some '!' -> Stream.junk stream; Some(Bang !line)
-	| Some '"' -> Stream.junk stream; Some(Quote !line)
-	| Some '#' -> Stream.junk stream; Some(Hash !line)
-	| Some '$' -> Stream.junk stream; Some(Dollar !line)
-	| Some '%' -> Stream.junk stream; Some(Percent !line)
-	| Some '&' -> Stream.junk stream; Some(Ampersand !line)
-	| Some '(' -> Stream.junk stream; Some(LParen !line)
-	| Some ')' -> Stream.junk stream; Some(RParen !line)
-	| Some '*' -> Stream.junk stream; Some(Mult !line)
-	| Some '+' -> Stream.junk stream; Some(Plus !line)
-	| Some ',' -> Stream.junk stream; Some(Comma !line)
-	| Some '\'' -> Stream.junk stream; reset_buffer(); parse_string stream
-	| Some '-' ->
-	    Stream.junk stream;
-	    begin
-	      match Stream.peek stream with
-		  Some '-' -> Stream.junk stream; parse_comment stream
-		| Some '>' -> Stream.junk stream; Some(Arrow !line)
-		| _ -> Some(Minus !line)
-	    end
-	| Some '.' -> 
-	    Stream.junk stream;
-	    begin
-	      match Stream.peek stream with
-		  Some '.' -> Stream.junk stream; Some(DotDot !line)
-	        | _ -> Some(Dot !line)
-	    end
-	| Some '/' -> Stream.junk stream; Some(Div !line)
-	| Some ':' -> 
-	    Stream.junk stream;
-	    begin
-	      match Stream.peek stream with
-		  Some ':' -> Stream.junk stream; Some(DoubleColon !line)
-		| Some '=' -> Stream.junk stream; Some(Assign !line)
-		| _ -> Some(Colon !line)
-	    end
-	| Some ';' -> Stream.junk stream; Some(Semicolon !line)
-	| Some '<' ->
-	    Stream.junk stream;
-	    begin
-	      match Stream.peek stream with
-		  Some '<' -> Stream.junk stream; assert false
-		| Some '=' -> Stream.junk stream; Some(LessEq !line)
-		| Some '>' -> Stream.junk stream; Some(NotEq !line)
-		| _ -> Some(Less !line)
-	    end
-	| Some '=' -> Stream.junk input; Some (Equals !line)
-	| Some '>' -> 
-	    Stream.junk stream;
-	    begin
-	      match Stream.peek stream with
-		| Some '=' -> Stream.junk stream; Some(GreaterEq !line)
-		| Some '>' -> Stream.junk stream; Some(NotEq !line)
-		| _ -> Some(Greater !line)
-	    end
-	| Some '?' -> Stream.junk stream; Some(Question !line)
-	| Some '@' -> Stream.junk stream; Some(At !line)
-	| Some '[' -> Stream.junk stream; Some(LBracket !line)
-	| Some ']' -> Stream.junk stream; Some(RBracket !line)
-	| Some '^' -> 
-	    Stream.junk stream;
-	    begin
-              match Stream.peek stream with
-		  Some '^' -> Stream.junk stream; Some(HatHat !line)
-		| _ -> Some(Hat !line)
-            end
-	| Some '{' -> Stream.junk stream; Some(LBrace !line)
-	| Some '|' -> Stream.junk stream; Some(Bar !line)
-	| Some '}' -> Stream.junk stream; Some(RBrace !line)
-	| Some '~' -> Stream.junk stream; Some(Tilde !line)
-	| _ -> None
-    and parse_identifier_or_keyword stream =
-      match Stream.peek stream with
-	  Some ('0'..'9' | 'A'..'Z' | 'a'..'z' | '_' | '\192'..'\255' as c) ->
-	    Stream.junk stream; store c; parse_identifier_or_keyword stream
-	| _ -> identifier_or_keyword (get_string ())
-    and parse_string stream =
-      match Stream.peek stream with
-	  Some('\'') -> Stream.junk stream; Some(Str(get_string(), !line))
-	| Some '\\' ->
-	    let c = try parse_escape stream with
-		Stream.Failure -> raise (Stream.Error "")
-	    in store c; parse_string stream
-	| Some ('\010' | '\013') -> raise (Stream.Error "")
-	| Some c -> Stream.junk stream; store c; parse_string stream
-	| _ -> raise Stream.Failure
-    and parse_escape stream =
-      match Stream.peek stream with
-	| Some 'n' -> Stream.junk stream; '\n'
-	| Some 'r' -> Stream.junk stream; '\t'
-	| Some 't' -> Stream.junk stream; '\r'
-	| Some ('0'..'9' as c1) ->
-	    Stream.junk stream;
-	    begin match Stream.peek stream with
-		Some ('0'..'9' as c2) ->
-		  Stream.junk stream;
-		  begin match Stream.peek stream with
-		      Some ('0'..'9' as c3) ->
-			Stream.junk stream;
-			Char.chr ((Char.code c1 - 48) * 100 +
-				    (Char.code c2 -48) * 10 + (Char.code c3))
-		    | _ -> raise (Stream.Error "")
-		  end
-	      | _ -> raise (Stream.Error "")
-	    end
-	| Some c -> Stream.junk stream; c
-	| _ -> raise Stream.Failure
-    and parse_number stream =
-      match Stream.npeek 2 stream with
-	  ('0'..'9' as c)::_ ->
-	    Stream.junk stream;
-	    store c;
-	    parse_number stream
-	| ['.'; '0'..'9' | 'e' | 'E' ] ->
-            Stream.junk stream; store '.'; parse_decimal_part stream
-	| ['.'; _ ] ->
-            Some(Int (int_of_string (get_string ()), !line))
-	| ('e' | 'E')::_ ->
-	    Stream.junk stream;
-	    store 'e';
-	    parse_exponent_part stream
-	| _ -> Some(Int (int_of_string (get_string ()), !line))
-    and parse_decimal_part stream =
-      match Stream.peek stream with
-	  Some ('0'..'9' as c) ->
-	    Stream.junk stream;
-	    store c;
-	    parse_decimal_part stream
-	| Some ('e' | 'E') ->
-	    Stream.junk stream;
-	    store 'e';
-	    parse_exponent_part stream
-	| _ -> Some(Float (float_of_string (get_string ()), !line))
-    and parse_exponent_part stream =
-      match Stream.peek stream with
-	  Some ('+' | '-' as c) ->
-	    Stream.junk stream;
-	    store c;
-	    parse_end_exponent_part stream
-	| _ -> parse_end_exponent_part stream
-    and parse_end_exponent_part stream =
-      match Stream.peek stream with
-	  Some ('0'..'9' as c) ->
-	    Stream.junk stream;
-	    store c;
-	    parse_end_exponent_part stream
-	| _ -> Some(Float (float_of_string (get_string ()), !line))
-    and parse_comment stream =
-      match Stream.peek stream with
-	  Some('\010' | '\013') ->
-	    Stream.junk stream;
-	    incr line;
-	    next_token stream
-	| Some _ -> Stream.junk stream; parse_comment stream
-	| _ -> raise Stream.Failure
-    in
-      Stream.from (fun count -> next_token input)
-
-
-
-
-
-(** This exception is raised if a token has been encountered which the
-    parser does not expect. The first argument to the constructor
-    refers to the unexpected token, the second to the line in which it
-    has been found, and the third may be used for some explenation.
-    This explenation is usually the follow-set, that is, the set of
-    tokens expected instead. *)
-exception BadToken of string * int * string
-
-
-
-
-
 (** Parse an identifier or operator name from the stream and return
     its name as an Identifier tree *)
 let parse_identifier_or_operator input =
@@ -816,33 +407,6 @@ and parse_pathname_double_colon input path =
 	Stream.junk input;
 	parse_pathname_identifier input path
     | _ -> path
-
-
-
-
-(** Parse a type specification. *)
-let rec parse_typespec input =
-  match Stream.peek input with
-      Some Id (name, _) ->
-	Stream.junk input;
-	begin
-	  match Stream.peek input with
-	      Some LParen _ ->
-		Stream.junk input;
-		let arg = parse_typespec input in
-		  begin
-		    match Stream.peek input with
-			Some RParen _ -> Application (name, arg)
-		      | Some t -> raise  (BadToken ((get_token_name t),
-						    (get_token_line t), ")"))
-		      | None -> raise (Eof "in type specification")
-		  end
-	    | _ -> Name name
-	end
-    | Some t -> raise (BadToken ((get_token_name t), (get_token_line t),
-				 "<<identifier>>"))
-    | None -> raise (Eof "in type specification")
-
 
 
 
@@ -1398,7 +962,7 @@ and parse_message_expr_args input =
 	  match Stream.peek input with
 	      Some Colon _ ->
 		Stream.junk input;
-		let ts = parse_typespec input in
+		let ts = Type.parse input in
 		  begin
 		    match Stream.peek input with
 			Some Comma _ ->
@@ -1490,7 +1054,7 @@ and parse_vardecl input =
 	  match Stream.peek input with
 	      Some Colon _ ->
 		Stream.junk input;
-		let t = parse_typespec input in
+		let t = Type.parse input in
 		  begin
 		    match Stream.peek input with
 			Some Equals _ ->
@@ -1571,7 +1135,7 @@ and parse_constraint_colon input =
 type oclcontext = { self: string option;
 		    xxx: string option;
 		    context: oclast;
-		    typespec: ocltypespec option;
+		    typespec: Type.t option;
 		    constraints: oclconstraint list }
 
 

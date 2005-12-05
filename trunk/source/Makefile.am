@@ -44,7 +44,8 @@ noinst_LIBRARIES	= libxml_stubs.a
 
 libxml_stubs_a_SOURCES	= xml_helpers.c xml_helpers.h xmld_stubs.c \
 			  xmlr_stubs.c xmlw_stubs.c xslt_stubs.c \
-			  Xml.ml XmlTextReader.ml XmlWriter.ml Xslt.ml
+			  Xml.ml XmlTextReader.ml XmlTextWriter.ml \
+			  Xslt.ml
 AM_CPPFLAGS		= $(XML_CPPFLAGS) $(XSLT_CPPFLAGS) -I`ocamlc -where` \
 			  -DCAML_NAME_SPACE
 AM_CFLAGS		= -Wall -Wno-unused -Werror
@@ -55,12 +56,15 @@ OCAMLOPT_FLAGS		= -I . -I ${srcdir} -linkpkg -package .
 
 bin_PROGRAMS	= oclvp oclvp.opt
 
-oclvp_SOURCES		= Version.ml Settings.ml ClassDiagram.ml \
-			  ObjectDiagram.ml StateMachine.ml \
-			  OCL.mli OCL.ml \
-			  Classifier.mli Classifier.ml \
-			  Package.mli Package.ml Model.mli Model.ml \
-			  SUML.mli SUML.ml XMI.ml \
+oclvp_SOURCES		= Version.ml Settings.ml			\
+			  Lexer.mli Lexer.ml				\
+			  Type.mli Type.ml				\
+			  ClassDiagram.mli ClassDiagram.ml		\
+			  ObjectDiagram.mli ObjectDiagram.ml		\
+			  StateMachine.mli StateMachine.ml		\
+			  OCL.mli OCL.ml				\
+			  Package.mli Package.ml Model.mli Model.ml	\
+			  SUML.mli SUML.ml XMI.ml			\
 			  Driver.ml
 
 oclvp_opt_SOURCES	= $(oclvp_SOURCES)

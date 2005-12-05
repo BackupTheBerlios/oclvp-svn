@@ -23,6 +23,8 @@
 
 (** Parse an XML document in the SUML format and return a model. *)
 
+open ClassDiagram
+
 (** Print a node. Used for debugging. *)
 let print_node reader =
   print_endline
@@ -378,18 +380,25 @@ let read_initializer reader =
   assert ((XmlTextReader.name reader = "initializer") &&
 	    (XmlTextReader.node_type reader = XmlTextReader.StartElement));
   let lang = XmlTextReader.get_attribute reader "lang" in
-  let name = XmlTextReader.get_attribute_opt reader "lang" "" in
+  let n =
+    try Some (XmlTextReader.get_attribute reader "lang")
+    with _ -> None in
+  let value = ref "" in
   let continue = ref (XmlTextReader.read reader) in
     while !continue do
       match (XmlTextReader.name reader, XmlTextReader.node_type reader) with
-          (_, XmlTextReader.Text) -> continue := XmlTextReader.read reader
+          (_, XmlTextReader.Text) ->
+	    value := !value ^ (XmlTextReader.value reader);
+	    continue := XmlTextReader.read reader
         | (_, XmlTextReader.SigWhitespace) ->
+	    value := !value ^ (XmlTextReader.value reader);
 	    continue := XmlTextReader.read reader
         | ("initializer", XmlTextReader.EndElement) ->
             ignore (XmlTextReader.read reader);
 	    continue := false
 	| _ -> continue := false (* Caller decides if there is an error. *)
-    done
+    done;
+    Attribute.Opaque (lang, n, !value)
 
 
 
@@ -430,7 +439,13 @@ let read_parameter reader =
   assert ((XmlTextReader.name reader = "parameter") &&
 	    (XmlTextReader.node_type reader = XmlTextReader.StartElement));
   let pname = XmlTextReader.get_attribute reader "name" in
-  let pdir = XmlTextReader.get_attribute_opt reader "direction" "in" in
+  let pdir =
+    match XmlTextReader.get_attribute_opt reader "direction" "in" with
+	"in" -> Parameter.In
+      | "out" -> Parameter.Out
+      | "inout" -> Parameter.InOut
+      | _ -> assert false
+  in
   let ptype = XmlTextReader.get_attribute reader "type" in
   let continue = ref (XmlTextReader.read reader) in
     while !continue do
@@ -441,7 +456,8 @@ let read_parameter reader =
 	| (_, XmlTextReader.SigWhitespace) ->
 	    continue := XmlTextReader.read reader
 	| _ -> continue := false (* Caller decides if there is an error. *)
-    done
+    done;
+    Parameter.create pname pdir ptype
 
 
 
@@ -465,7 +481,7 @@ let read_reception reader model =
     while !continue do
       match (XmlTextReader.name reader, XmlTextReader.node_type reader) with
           ("parameter", XmlTextReader.StartElement) ->
-            read_parameter reader
+            ignore (read_parameter reader)
         | ("constraint", XmlTextReader.StartElement) ->
             read_constraint reader
         | ("reception", XmlTextReader.EndElement) ->
@@ -504,7 +520,7 @@ let read_operation reader model =
     while !continue; do 
       match (XmlTextReader.name reader, XmlTextReader.node_type reader) with
 	  ("parameter", XmlTextReader.StartElement) ->
-            read_parameter reader
+            ignore (read_parameter reader)
 	| ("constraint", XmlTextReader.StartElement) ->
             read_constraint reader
 	| ("implementation", XmlTextReader.StartElement) ->
@@ -521,7 +537,7 @@ let read_operation reader model =
 
 
 
-let read_attribute reader model =
+let read_attribute reader =
   (* Read an attribute.
 
      <!ELEMENT attribute (initializer?)>
@@ -533,18 +549,20 @@ let read_attribute reader model =
   let aname = XmlTextReader.get_attribute reader "name" in
   let atype = XmlTextReader.get_attribute reader "type" in
   let export = attribute_export reader "true" in
+  let init = ref Attribute.None in
   let continue = ref (XmlTextReader.read reader) in
     while !continue do
       match (XmlTextReader.name reader, XmlTextReader.node_type reader) with
 	  ("initializer", XmlTextReader.StartElement) ->
-	    read_initializer reader
+	    init := read_initializer reader
 	| ("attribute", XmlTextReader.EndElement) ->
 	    ignore (XmlTextReader.read reader);
 	    continue := false
 	| (_, XmlTextReader.SigWhitespace) ->
 	    continue := XmlTextReader.read reader
 	| _ -> continue := false (* Caller decides if there is an error. *)
-    done
+    done;
+    Attribute.create aname atype !init
 
 
 
@@ -563,6 +581,7 @@ let read_class reader model =
   let name = XmlTextReader.get_attribute reader "name" in
   let kind = XmlTextReader.get_attribute_opt reader "kind" "passive" in
   let export = attribute_export reader "true" in
+  let cls = Classifier.create name in
   let continue = ref (XmlTextReader.read reader) in
     while !continue do
       match (XmlTextReader.name reader, XmlTextReader.node_type reader) with
@@ -573,7 +592,7 @@ let read_class reader model =
 	| ("extends", XmlTextReader.StartElement) ->
 	    assert false
 	| ("attribute", XmlTextReader.StartElement) ->
-	    read_attribute reader model
+	    Classifier.add_attribute cls (read_attribute reader)
 	| ("operation", XmlTextReader.StartElement) ->
 	    read_operation reader model
 	| ("reception", XmlTextReader.StartElement) ->

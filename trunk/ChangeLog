@@ -1,3 +1,38 @@
+2005-12-05  Marcel Kyas  <mkyas@users.berlios.de>
+
+	* tests/testsuite.at: Corrected test names.
+
+	* source/Lexer.ml, source/Lexer.mli: New files.  Split out
+	lexicographical analyser; many different parts need it.
+
+	* source/Type.ml, source/Type.mli: New files.  Both OCL and UML
+	diagrams depend on types.  In order to make the different parts
+	more independent, types have been moved into their own compilation
+	unit.
+
+	* source/OCL.ml, source/OCL.mli: Removed parts which have been
+	moved to Lexer.ml{,i} and Type.ml{,i}.
+
+	* source/Driver.ml: Renamed XmlWriter to XmlTextWriter.
+
+	* source/XmlWriter.ml, source/XmlTextWriter.ml: Renamed files to
+	be more consistent.
+
+	* source/SUML.ml: Build more syntax trees.
+
+	* source/ObjectDiagram.mli:  New file.
+
+	* source/Classifier.mli: Merged into ClassDiagram.mli
+
+	* source/Classifier.ml: Merged into ClassDiagram.mli
+
+	* source/ClassDiagram.mli: New file.
+
+	* source/ClassDiagram.ml: Merged from Classifier.ml.
+
+	* source/Makefile.am: Distribute new files.  Do not distribute
+	removed files.
+
 2005-12-02  Marcel Kyas  <mkyas@users.berlios.de>
 
 	* share/suml02.dtd: Boolean attributes only use true or false and

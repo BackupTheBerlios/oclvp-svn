@@ -1,5 +1,5 @@
 (*
- * Classifier.mli -- Interface to the abstract data type of a classifier.
+ * StateMachine.mli -- Interface to the abstract syntax of a state machine.
  *
  * This file is part of oclvp
  *
@@ -20,15 +20,3 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *)
-
-type classifier = { classifier_name: string }
-
-type attribute = {
-  attributename: string;
-  attributetype: string
-}
-
-let name cls = cls.classifier_name
-
-let create name =
-  { classifier_name = name }

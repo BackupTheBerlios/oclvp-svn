@@ -1,5 +1,5 @@
 (*
- * Classifier.mli -- Definition of the abstract syntax of a classifier.
+ * StateMachine.mli -- Interface to the abstract syntax of a state machine.
  *
  * This file is part of oclvp
  *
@@ -20,20 +20,3 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *)
-
-(** Definition of a classifier. *)
-
-(** The type of a classifier. *)
-type classifier
-
-(** The type of an attribute. *)
-type attribute = {
-  attributename: string;
-  attributetype: string
-}
-
-(** Create a new, empty classifier. *)
-val create: string -> classifier
-
-(** Get the name of a classifier. *)
-val name: classifier -> string

@@ -36,4 +36,4 @@ val name: package -> string
 val add_package: package -> package -> unit
 
 (** Add a classifier to the package. *)
-val add_classifier: package -> Classifier.classifier -> unit
+val add_classifier: package -> ClassDiagram.Classifier.t -> unit

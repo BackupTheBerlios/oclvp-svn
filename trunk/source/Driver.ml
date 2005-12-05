@@ -43,7 +43,7 @@ let ocl_from_file name =
     if !Settings.dump_to_xml then
       begin
 	print_endline "Here!";
-	OCL.unit_to_xml (XmlWriter.to_file "-" 0) tree
+	OCL.unit_to_xml (XmlTextWriter.to_file "-" 0) tree
       end
     else
       ()
@@ -52,8 +52,8 @@ let ocl_from_string expr =
   let tree = OCL.from_string expr in
     if !Settings.dump_to_xml then
       begin
-	let writer = XmlWriter.to_file "-" 0 in
-	  XmlWriter.set_indent writer true;
+	let writer = XmlTextWriter.to_file "-" 0 in
+	  XmlTextWriter.set_indent writer true;
 	  OCL.unit_to_xml writer tree
       end
     else

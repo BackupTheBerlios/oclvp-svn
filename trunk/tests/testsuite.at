@@ -250,7 +250,7 @@ AT_CHECK([oclvp 2.suml], [0], [], [])
 AT_CHECK([oclvp 3.suml], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([suml-parse-classdia])
+AT_SETUP([suml-parse-constraint])
 AT_DATA([1.suml],
 [[<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suml PUBLIC "-//Marcel Kyas//DTD suml XML 0.2//EN" "http://www.informatik.uni-kiel.de/~mky/suml/0.2/suml.dtd">
@@ -723,7 +723,7 @@ AT_DATA([18.suml],
 AT_CHECK([oclvp 18.suml], [0], [], [])
 AT_CLEANUP
 
-AT_SETUP([suml-parse-action])
+AT_SETUP([suml-parse-sieve])
 AT_CHECK([oclvp ${abs_srcdir}/sieve.suml], [0], [], [])
 AT_CLEANUP
 
