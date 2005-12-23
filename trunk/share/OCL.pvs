@@ -1,0 +1,158 @@
+Injections[T: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING bags@top_bags
+
+  as_set(s: finite_set[T]): finite_set[T] = s
+
+  as_set(s: finite_sequence[T]): finite_set[T] =
+      IF s`length = 0 THEN emptyset
+      ELSE {e: T | EXISTS (i: below[s`length]): e = s`seq(i)}
+      ENDIF
+
+  as_set(s: finite_bag[T]): finite_set[T] = bag_to_set(s)
+
+  set_to_sequence(s: finite_set[T]): RECURSIVE finite_sequence[T] =
+    IF empty?(s) THEN empty_seq
+    ELSE (# length := 1, seq := LAMBDA (i: below[1]): choose(s) #) o
+          set_to_sequence(rest(s))
+    ENDIF
+     MEASURE card(s)
+
+  as_sequence(s: finite_set[T]):
+        {f: finite_sequence[T] |
+                 IF empty?(s) THEN f = empty_seq
+                 ELSE EXISTS (g: [below[card(s)] -> (s)]):
+                        f = (# length := card(s), seq := g #)
+                 ENDIF}
+
+  as_sequence(s: finite_sequence[T]): finite_sequence[T] = s
+
+  as_sequence(s: finite_bag[T]):
+        {fs: finite_sequence[T] |
+                 IF empty?(s) THEN fs = empty_seq
+                 ELSE EXISTS (g:
+                                [below[card(s)] -> {e: T | member(e, s)}]):
+                        (FORALL (e: T):
+                           card({i: below[card(s)] | g(i) = e}) =
+                            count(e, s))
+                         AND fs = (# length := card(s), seq := g #)
+                 ENDIF}
+
+  as_bag(s: finite_set[T]): finite_bag[T] =
+      LAMBDA (e: T): IF member(e, s) THEN 1 ELSE 0 ENDIF
+
+  as_bag(s: finite_sequence[T]): finite_bag[T] =
+      LAMBDA (e: T): card({i: below[s`length] | s`seq(i) = e})
+
+  as_bag(s: finite_bag[T]): finite_bag[T] = s
+ END Injections
+
+Helpers[T: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING bags@top_bags
+
+  fs: VAR finite_sequence[T]
+
+  nfs: VAR {fs | fs`length > 0}
+
+  start(s: {fs | fs`length > 0}): finite_sequence[T] =
+      (# length := s`length - 1,
+         seq := restrict[below[s`length], below[s`length - 1], T](s`seq) #)
+
+  start_length: LEMMA nfs`length - 1 = start(nfs)`length
+
+  insert_at(s: finite_sequence[T], e: T, i: posnat): finite_sequence[T] =
+      s ^ (0, i - 1) o (# length := 1, seq := LAMBDA (x: below[1]): e #) o
+       s ^ (i, s`length)
+
+  excluding(s: finite_sequence[T], e: T): RECURSIVE finite_sequence[T] =
+    IF s`length = 0 THEN empty_seq
+    ELSE IF s`seq(s`length - 1) = e
+           THEN excluding(s ^ (0, s`length - 1), e)
+         ELSE excluding(s ^ (0, s`length - 1), e) o
+               (# length := 1, seq := LAMBDA (x: below[1]): e #)
+         ENDIF
+    ENDIF
+     MEASURE s`length
+ END Helpers
+
+Flatten[T: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING Injections[T]
+
+  IMPORTING bags@top_bags
+
+  flatten(s: finite_set[finite_set[T]]): RECURSIVE finite_set[T] =
+    IF empty?(s) THEN emptyset ELSE union(choose(s), flatten(rest(s))) ENDIF
+     MEASURE card(s)
+
+  flatten(s: finite_set[finite_sequence[T]]): RECURSIVE finite_set[T] =
+    IF empty?(s) THEN emptyset
+    ELSE union(as_set(choose(s)), flatten(rest(s)))
+    ENDIF
+     MEASURE card(s)
+
+  flatten(s: finite_bag[finite_bag[T]]): RECURSIVE finite_bag[T] =
+    IF nonempty_bag?(s) THEN plus(choose(s), flatten(rest(s)))
+    ELSE emptybag
+    ENDIF
+     MEASURE card(s)
+ END Flatten
+
+Iterate[T: TYPE, S: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING bags@top_bags
+
+  iterate(s: finite_set[T], a: S, f: [T, S -> S]): RECURSIVE S =
+    IF empty?(s) THEN a ELSE iterate(rest(s), f(choose(s), a), f) ENDIF
+     MEASURE card(s)
+
+  iter(s: finite_sequence[T], a: S, f: [T, S -> S])(i: upto[s`length]):
+    RECURSIVE S =
+	IF i = s`length THEN a ELSE iter(s, f(s`seq(i), a), f)(i + 1) ENDIF
+      MEASURE s`length - i
+  
+  iterate(s: finite_sequence[T], a: S, f: [T, S -> S]): S = iter(s, a, f)(0)
+
+  iterate(s: finite_bag[T], a: S, f: [T, S -> S]): RECURSIVE S =
+    IF nonempty_bag?(s) THEN iterate(rest(s), f(choose(s), a), f)
+    ELSE a
+    ENDIF
+     MEASURE card(s)
+ END Iterate
+
+OCL[Classes: TYPE+, <=: (partial_order?[Classes]), Attributes: TYPE,
+    References: TYPE, Locations: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING Helpers
+
+  IMPORTING bags@top_bags
+
+  round(x: real): int = floor(x + 1/2)
+
+  OclAny: TYPE+ = nat CONTAINING 0
+
+  null: OclAny = 0
+
+  OclAnyNotNull: TYPE = {obj: OclAny | obj /= null}
+
+  ObjectState: TYPE = [# class: Classes, loc: Locations #]
+
+  State: TYPE = [OclAnyNotNull -> ObjectState]
+
+  is_type_of(self: OclAnyNotNull)(C: Classes)(state: State): bool =
+      state(self)`class = C
+
+  is_kind_of(self: OclAnyNotNull)(C: Classes)(state: State): bool =
+      state(self)`class <= C
+
+  in_state(self: OclAnyNotNull)(l: Locations)(state: State): bool =
+      state(self)`loc = l
+
+  OclVoid: TYPE = {obj: OclAny | FALSE}
+ END OCL

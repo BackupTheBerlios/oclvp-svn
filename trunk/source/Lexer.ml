@@ -159,9 +159,11 @@ let lexer input =
     let s = String.sub !buffer 0 !bufpos in buffer := initial_buffer; s in
   let keyword_table = Hashtbl.create 29 in
     List.iter (fun s -> Hashtbl.add keyword_table s s)
-      [ "and"; "context"; "def"; "derive"; "else"; "endif"; "endpackage";
-	"false"; "if"; "implies"; "init"; "inv"; "in"; "let";
-	"not"; "or"; "package"; "post"; "pre"; "then"; "true"; "xor" ];
+      [ "and"; "context"; "def"; "derive"; "else";
+        "endif"; "endpackage"; "false"; "if"; "implies";
+        "init"; "inv"; "in"; "let"; "not";
+        "null"; "or"; "package"; "post"; "pre";
+        "then"; "true"; "xor" ];
     let identifier_or_keyword id =
       try Some (Keyword ((Hashtbl.find keyword_table id), !line))
       with Not_found -> Some (Id (id, !line))
