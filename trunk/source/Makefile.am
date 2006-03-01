@@ -51,8 +51,8 @@ AM_CPPFLAGS		= $(XML_CPPFLAGS) $(XSLT_CPPFLAGS) -I`ocamlc -where` \
 AM_CFLAGS		= -Wall -Wno-unused -Werror
 
 XML_DESTDIR		= `pwd`
-OCAMLC_FLAGS		= -I . -I ${srcdir} -linkpkg -package . -dllpath ${XML_DESTDIR}
-OCAMLOPT_FLAGS		= -I . -I ${srcdir} -linkpkg -package .
+OCAMLC_FLAGS		= -I . -I ${srcdir} -linkpkg -package . -dllpath ${XML_DESTDIR} -g -w y
+OCAMLOPT_FLAGS		= -I . -I ${srcdir} -linkpkg -package . -w a
 
 bin_PROGRAMS	= oclvp oclvp.opt
 

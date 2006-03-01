@@ -53,6 +53,11 @@ type oclast =
 
 
 
+val expression_from_string: string -> oclast
+
+
+
+
 
 type oclconstraint =
     { stereotype : string;

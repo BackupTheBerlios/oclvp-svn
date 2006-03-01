@@ -27,6 +27,23 @@
     @since 0.0
     @version 0.0 *)
 
+module Constraint: sig
+
+  type t =
+      (** The type of the constraint. *)
+      None
+	(** The constraint is not present *)
+    | Opaque of string * string * string * string
+	(** The constraint is given as an opaque constraint. *)
+    | OclConstraint of string * string * string * OCL.oclast
+	(** The constraint is given in OCL *)
+
+  val create_opaque: string -> string -> string -> string -> t
+
+  val create: string -> string -> string -> OCL.oclast -> t
+
+end
+
 (** Definition of the abstract syntax of an attribute. *)
 module Attribute: sig
 

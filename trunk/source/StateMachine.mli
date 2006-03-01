@@ -20,3 +20,74 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  * 02111-1307, USA.
  *)
+module Action: sig
+
+  type t =
+      None
+    | Opaque of string * string
+
+  val create: string -> string -> t
+
+end
+
+
+
+
+
+module Guard: sig
+
+  type t =
+      None
+    | Opaque of string * string
+    | Ocl of string * OCL.oclast
+
+  val create_opaque: string -> string -> t
+
+  val create: string -> OCL.oclast -> t
+
+end
+
+
+
+
+
+
+module Trigger: sig
+
+  type t = string option
+
+  val create: string -> t
+
+end
+
+
+
+
+
+module Transition: sig
+
+  type t
+
+  val create: string -> string -> Trigger.t -> Guard.t -> Action.t -> string -> t
+
+end
+
+
+
+
+
+module State: sig
+
+  type t
+
+  val create: string -> t
+
+end
+
+
+
+
+
+type t
+
+val create: unit -> t

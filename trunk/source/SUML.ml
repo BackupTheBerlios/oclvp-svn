@@ -24,6 +24,7 @@
 (** Parse an XML document in the SUML format and return a model. *)
 
 open ClassDiagram
+open StateMachine
 
 (** Print a node. Used for debugging. *)
 let print_node reader =
@@ -74,11 +75,10 @@ let read_constraint reader =
     done;
     (* After having read the constraint we see whether we want to
        parse it or store it as an opaque constraint. *)
-    begin
-      match lang with
-	  "OCL" -> ()
-	| _ -> ()
-    end
+    match lang with
+	"OCL" -> Constraint.create name stereotype lang
+	  (OCL.expression_from_string !result)
+      | _ -> Constraint.create_opaque name stereotype lang !result
 
 
 
@@ -104,7 +104,9 @@ let read_action reader =
         | ("action", XmlTextReader.EndElement) ->
 	    ignore (XmlTextReader.read reader); continue := false
 	| _ -> continue := false (* Caller decides if this is an error. *)
-    done
+    done;
+    (* After having parsed the constraint we return the action *)
+    Action.create lang !action
 
 
 
@@ -132,7 +134,10 @@ let read_guard reader =
 	    guard := !guard ^ (XmlTextReader.value reader);
 	    continue := XmlTextReader.read reader
 	| _ -> continue := false (* Caller decides if this is an error. *)
-    done
+    done;
+    match lang with
+	"OCL" -> Guard.create lang (OCL.expression_from_string !guard)
+      | _ -> Guard.create_opaque lang !guard
 
 
 
@@ -155,7 +160,8 @@ let read_trigger reader =
             ignore (XmlTextReader.read reader);
 	    continue := false
 	| _ -> continue := false (* Caller decides if this is an error. *)
-    done
+    done;
+    Trigger.create trigger
 
 
 
@@ -170,22 +176,29 @@ let read_transition reader =
      target IDREF #REQUIRED> *)
   assert ((XmlTextReader.name reader = "transition") &&
 	    (XmlTextReader.node_type reader = XmlTextReader.StartElement));
+  let trigger = ref None in
+  let guard = ref Guard.None in
+  let action = ref Action.None in
   let name = XmlTextReader.get_attribute_opt reader "source" "" in
   let source = XmlTextReader.get_attribute reader "source" in
   let target = XmlTextReader.get_attribute reader "target" in
   let continue = ref (XmlTextReader.read reader) in
     while !continue do
       match (XmlTextReader.name reader, XmlTextReader.node_type reader) with
-          ("trigger", XmlTextReader.StartElement) -> read_trigger reader
-        | ("guard", XmlTextReader.StartElement) -> read_guard reader
-        | ("action", XmlTextReader.StartElement) -> read_action reader
+          ("trigger", XmlTextReader.StartElement) ->
+	    trigger := read_trigger reader
+        | ("guard", XmlTextReader.StartElement) ->
+	    guard := read_guard reader
+        | ("action", XmlTextReader.StartElement) ->
+	    action := read_action reader
         | ("transition", XmlTextReader.EndElement) ->
             ignore (XmlTextReader.read reader);
 	    continue := false
         | (_, XmlTextReader.SigWhitespace) ->
 	    continue := XmlTextReader.read reader
 	| _ -> continue := false (* Caller decides if this is an error. *)
-    done
+    done;
+    Transition.create source name !trigger !guard !action target
 
 
 
@@ -229,7 +242,8 @@ let rec read_region reader =
             ignore (XmlTextReader.read reader);
 	    continue := false
         | ("state", XmlTextReader.StartElement) -> read_state reader
-        | ("transition", XmlTextReader.StartElement) -> read_transition reader
+        | ("transition", XmlTextReader.StartElement) ->
+	    ignore (read_transition reader)
         | (_, XmlTextReader.SigWhitespace) ->
 	    continue := XmlTextReader.read reader
 	| _ -> continue := false (* Caller decides if this is an error. *)
@@ -252,7 +266,8 @@ and read_state reader =
           ("state", XmlTextReader.EndElement) ->
             ignore (XmlTextReader.read reader);
 	    continue := false
-        | ("constraint", XmlTextReader.StartElement) -> read_constraint reader
+        | ("constraint", XmlTextReader.StartElement) -> 
+	    ignore (read_constraint reader)
         | ("deferrable", XmlTextReader.StartElement) -> read_deferrable reader
         | ("region", XmlTextReader.StartElement) -> read_region reader
         | (_, XmlTextReader.SigWhitespace) ->
@@ -483,7 +498,7 @@ let read_reception reader model =
           ("parameter", XmlTextReader.StartElement) ->
             ignore (read_parameter reader)
         | ("constraint", XmlTextReader.StartElement) ->
-            read_constraint reader
+            ignore (read_constraint reader)
         | ("reception", XmlTextReader.EndElement) ->
             ignore (XmlTextReader.read reader);
 	    continue := false
@@ -522,7 +537,7 @@ let read_operation reader model =
 	  ("parameter", XmlTextReader.StartElement) ->
             ignore (read_parameter reader)
 	| ("constraint", XmlTextReader.StartElement) ->
-            read_constraint reader
+            ignore (read_constraint reader)
 	| ("implementation", XmlTextReader.StartElement) ->
             read_implementation reader
 	| ("operation", XmlTextReader.EndElement) -> 
@@ -600,7 +615,7 @@ let read_class reader model =
 	| ("associationend", XmlTextReader.StartElement) ->
 	    read_associationend reader
 	| ("constraint", XmlTextReader.StartElement) ->
-	    read_constraint reader
+	    ignore (read_constraint reader)
 	| ("statemachine", XmlTextReader.StartElement) ->
 	    read_statemachine reader
 	| ("class", XmlTextReader.EndElement) ->

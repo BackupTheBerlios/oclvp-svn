@@ -21,6 +21,47 @@
  * 02111-1307, USA.
  *)
 
+(** Implementation of the abstract syntax of constraints. *)
+
+module Constraint = struct
+  type t =
+      None
+    | Opaque of string * string * string * string
+    | OclConstraint of string * string * string * OCL.oclast
+	
+  let create_opaque a b c d = Opaque (a, b, c, d)
+
+  let create a b c d = OclConstraint (a, b, c, d)
+
+  let get_name =
+    function
+	None -> ""
+      | Opaque (a, _, _, _) -> a
+      | OclConstraint (a, _, _, _) -> a
+
+  let get_stereotype =
+    function
+	None -> ""
+      | Opaque (_, s, _, _) -> s
+      | OclConstraint (_, s, _, _) -> s
+
+  let get_lang =
+    function
+	None -> ""
+      | Opaque (_, _, l, _) -> l
+      | OclConstraint (_, _, l, _) -> l
+
+  let get_constraint =
+    function
+	None -> (OCL.BooleanLiteral true)
+      | Opaque (_, _, _, _) -> (OCL.BooleanLiteral true)
+      | OclConstraint (_, _, _, c) -> c
+end
+
+
+
+
+
 (** Implementation of the abstract syntax of attributes. *)
 module Attribute =
   struct
@@ -92,8 +133,7 @@ module Classifier =
 
     let add_attribute c a =
       try
-	let t = Hashtbl.find c.attributes a.Attribute.name in
-	  assert false
+	ignore (Hashtbl.find c.attributes a.Attribute.name)
       with
 	  Not_found -> Hashtbl.add c.attributes a.Attribute.name a
   end

@@ -21,3 +21,80 @@
  * 02111-1307, USA.
  *)
 
+module Action = struct
+
+  type t =
+      None
+    | Opaque of string * string
+
+  let create lang action = Opaque (lang, action)
+
+end
+
+
+
+
+
+module Guard = struct
+
+  type t =
+      None
+    | Opaque of string * string
+    | Ocl of string * OCL.oclast
+
+  let create_opaque lang guard = Opaque (lang, guard)
+
+  let create lang guard = Ocl (lang, guard)
+
+end
+
+
+
+
+
+module Trigger = struct
+
+  type t = string option
+
+  let create trigger = Some trigger
+
+end
+
+
+
+
+
+module Transition = struct
+
+  type t = {
+    source: string;
+    name: string;
+    trigger: Trigger.t;
+    guard: Guard.t;
+    action: Action.t;
+    target: string;
+  }
+
+  let create s n tr g a tg =
+    { source = s; name = n; trigger = tr; guard = g; action = a; target = tg }
+
+end
+
+
+
+
+
+module State = struct
+
+  type t = { name: string }
+
+  let create n = { name = n }
+
+end
+
+type t =
+    { states: State.t list;
+      transitions: Transition.t list;
+    }
+
+let create () = { states = []; transitions = [] }
