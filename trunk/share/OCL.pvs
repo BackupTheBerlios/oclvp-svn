@@ -126,7 +126,7 @@ Iterate[T: TYPE, S: TYPE]: THEORY
  END Iterate
 
 OCL[Classes: TYPE+, <=: (partial_order?[Classes]), Attributes: TYPE,
-    References: TYPE, Locations: TYPE]: THEORY
+    References: TYPE, Locations: TYPE, Value: TYPE+]: THEORY
  BEGIN
 
   IMPORTING Helpers
@@ -135,24 +135,25 @@ OCL[Classes: TYPE+, <=: (partial_order?[Classes]), Attributes: TYPE,
 
   round(x: real): int = floor(x + 1/2)
 
-  OclAny: TYPE+ = nat CONTAINING 0
+  ObjectId: TYPE+ = nat CONTAINING 0
 
-  null: OclAny = 0
+  null: ObjectId = 0
 
-  OclAnyNotNull: TYPE = {obj: OclAny | obj /= null}
+  ObjectIdNotNull: TYPE = {obj: ObjectId | obj /= null}
 
-  ObjectState: TYPE = [# class: Classes, loc: Locations #]
+  ObjectState: TYPE = [# class: Classes, aval: [Attributes -> Value],
+  rval: [References -> ObjectId], loc: Locations #]
 
-  State: TYPE = [OclAnyNotNull -> ObjectState]
+  State: TYPE = [ObjectIdNotNull -> ObjectState]
 
-  is_type_of(self: OclAnyNotNull)(C: Classes)(state: State): bool =
+  is_type_of(self: ObjectIdNotNull)(C: Classes)(state: State): bool =
       state(self)`class = C
 
-  is_kind_of(self: OclAnyNotNull)(C: Classes)(state: State): bool =
+  is_kind_of(self: ObjectIdNotNull)(C: Classes)(state: State): bool =
       state(self)`class <= C
 
-  in_state(self: OclAnyNotNull)(l: Locations)(state: State): bool =
+  in_state(self: ObjectIdNotNull)(l: Locations)(state: State): bool =
       state(self)`loc = l
 
-  OclVoid: TYPE = {obj: OclAny | FALSE}
+  OclVoid: TYPE = {obj: ObjectId | FALSE}
  END OCL

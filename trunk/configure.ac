@@ -41,6 +41,9 @@ AC_PATH_PROG([XMLLINT], xmllint)
 AC_PATH_PROG([XMLCATALOG], xmlcatalog)
 AC_PATH_PROG([XSLTPROC], xsltproc)
 
+dnl See whether we have chcon in order to fix tests with selinux.
+AC_PATH_PROG([CHCON], chcon)
+
 dnl Check for the tools needed to compile ocaml code.
 AC_CHECK_PROG([OCAMLFIND], [ocamlfind], [ocamlfind], [false])
 AC_CHECK_PROG([OCAMLMKLIB], [ocamlmklib], [ocamlmklib], [false])

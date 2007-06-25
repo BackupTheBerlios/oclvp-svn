@@ -23,13 +23,13 @@
 
 #include "xml_helpers.h"
 
-char *
+value
 xml_string_option(value opt)
 {
 	CAMLparam1(opt);
 
 	if (Is_long(opt))    /* None */
-		CAMLreturn(NULL);
+		CAMLreturn(0);
 	else                 /* Some x */
-		CAMLreturn(String_val(Field(opt, 0)));
+		CAMLreturn(Field(opt, 0));
 }

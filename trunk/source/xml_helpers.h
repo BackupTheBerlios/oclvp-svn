@@ -33,7 +33,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-char * xml_string_option(value opt);
+value xml_string_option(value opt);
 
 #define XmlDoc_val(v) (*(xmlDocPtr*) Data_custom_val(v))
 

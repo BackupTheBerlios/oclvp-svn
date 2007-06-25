@@ -144,7 +144,7 @@ xml_reader_from_filename(value vencoding, value vopts, value filename)
 	xmlTextReaderPtr reader;
 	
 	reader = xmlReaderForFile(String_val(filename),
-				  xml_string_option(vencoding),
+				  String_val(xml_string_option(vencoding)),
 				  load_opts(vopts));
 
 #ifndef NDEBUG
@@ -171,8 +171,8 @@ xml_reader_from_string(value baseurl, value encoding, value opts, value str)
 	/* XXX we probably need to hold a reference to the string? */
 	reader = xmlReaderForMemory(String_val(str),
 				    caml_string_length(str),
-				    xml_string_option(baseurl),
-				    xml_string_option(encoding),
+				    String_val(xml_string_option(baseurl)),
+				    String_val(xml_string_option(encoding)),
 				    load_opts(opts));
 
 #ifndef NDEBUG
@@ -213,7 +213,11 @@ xml_reader_get_parser_line_number(value reader)
 	CAMLparam1(reader);
 	int ret;
 
+#if LIBXML_VERSION > 20616
 	ret = xmlTextReaderGetParserLineNumber(XmlReader_val(reader));
+#else
+	ret = 0;
+#endif
 	CAMLreturn(Int_val(ret));
 }
 

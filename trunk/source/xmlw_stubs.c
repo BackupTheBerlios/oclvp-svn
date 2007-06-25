@@ -381,15 +381,16 @@ xml_writer_set_indent(value writer, value indent)
 {
 	CAMLparam2(writer, indent);
 	int ret;
+	int _indent = Bool_val(indent);
 
 #ifndef NDEBUG
 	if (debug) {
-		fprintf(stderr, "Set indent to %d\n", Bool_val(indent));
+		fprintf(stderr, "Set indent to %s\n",
+			((_indent) ? "true" : "false"));
 		fflush(stderr);
 	}
 #endif
-	ret = xmlTextWriterSetIndent(XmlWriter_val(writer),
-				     Bool_val(indent));
+	ret = xmlTextWriterSetIndent(XmlWriter_val(writer), _indent);
 	if (ret == -1)
 		caml_failwith("xmlTextWriterSetIndent");
 	CAMLreturn(Val_unit);
@@ -546,9 +547,9 @@ xml_writer_start_document(value writer, value version, value encoding,
 	int ret;
 
 	ret = xmlTextWriterStartDocument(XmlWriter_val(writer),
-					 xml_string_option(version),
-					 xml_string_option(encoding),
-					 xml_string_option(standalone));
+					 String_val(xml_string_option(version)),
+					 String_val(xml_string_option(encoding)),
+					 String_val(xml_string_option(standalone)));
 	if (ret == -1)
 		caml_failwith("xmlTextWriterStartDocument");
 	CAMLreturn(Val_unit);
